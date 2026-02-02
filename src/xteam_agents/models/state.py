@@ -44,6 +44,9 @@ class SubTask(BaseModel):
     error: str | None = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
+    
+    # Dynamic agent assignment
+    assigned_agent: str | None = None  # e.g., "PythonExpert", "Researcher"
 
     def mark_completed(self, result: str) -> "SubTask":
         """Mark subtask as completed."""

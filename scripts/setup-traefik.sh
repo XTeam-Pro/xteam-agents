@@ -66,8 +66,13 @@ fi
 
 echo "=== Starting Services ==="
 echo ""
-echo "Running: docker-compose up -d"
-docker-compose up -d
+if command -v docker-compose &> /dev/null; then
+    echo "Running: docker-compose up -d"
+    docker-compose up -d
+else
+    echo "Running: docker compose up -d"
+    docker compose up -d
+fi
 
 echo ""
 echo "=== Setup Complete ==="
@@ -82,5 +87,9 @@ echo ""
 echo "Note: It may take a few minutes for Let's Encrypt certificates to be issued."
 echo ""
 echo "Check logs with:"
-echo "  docker-compose logs -f traefik"
+if command -v docker-compose &> /dev/null; then
+  echo "  docker-compose logs -f traefik"
+else
+  echo "  docker compose logs -f traefik"
+fi
 echo ""

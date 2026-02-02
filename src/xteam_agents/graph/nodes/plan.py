@@ -88,7 +88,7 @@ Please design a solution and create an execution plan.
 
 Your plan should include:
 1. Solution Overview
-2. Subtasks (as a JSON array with 'description' and 'success_criteria' fields)
+2. Subtasks (as a JSON array with 'description', 'success_criteria', and optional 'assigned_agent' fields)
 3. Required Capabilities
 4. Validation Strategy
 5. Rollback Plan
@@ -96,8 +96,8 @@ Your plan should include:
 IMPORTANT: Format your subtasks as a JSON array like this:
 ```json
 [
-    {{"description": "First subtask", "success_criteria": "What defines success"}},
-    {{"description": "Second subtask", "success_criteria": "What defines success"}}
+    {{"description": "Analyze dataset", "success_criteria": "Stats generated", "assigned_agent": "PythonDataAnalyst"}},
+    {{"description": "Search for API docs", "success_criteria": "Docs found", "assigned_agent": "WebResearcher"}}
 ]
 ```
 """
@@ -205,6 +205,7 @@ def _extract_subtasks(plan: str) -> list[SubTask]:
                 subtasks.append(
                     SubTask(
                         description=item.get("description", ""),
+                        assigned_agent=item.get("assigned_agent"),
                     )
                 )
     except (json.JSONDecodeError, AttributeError):

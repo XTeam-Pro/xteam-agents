@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "xteam-agents": {
+      "url": "https://agents.xteam.pro/sse",
+      "transport": "sse"
+    }
+  }
+}

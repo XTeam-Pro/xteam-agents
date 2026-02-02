@@ -1,8 +1,14 @@
 # XTeam Agents
 
+**Cognitive Operating System (Enterprise Grade)**
+Status: **APPROVED FOR DEVELOPMENT**
+Reference: [SSOT.md](./SSOT.md) (Single Source of Truth)
+
 Cognitive Operating System with configurable LLM (OpenAI/Anthropic), 4 memory backends (Redis, Qdrant, Neo4j, PostgreSQL), LangGraph orchestration, and full MCP control surface via FastMCP.
 
 ## Architecture
+
+See [SSOT.md](./SSOT.md) for the canonical architectural definition.
 
 ### Cognitive Graph Flow
 

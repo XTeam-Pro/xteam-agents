@@ -10,6 +10,7 @@ from xteam_agents.memory.backends.audit import AuditBackend
 from xteam_agents.memory.backends.episodic import EpisodicBackend
 from xteam_agents.memory.backends.procedural import ProceduralBackend
 from xteam_agents.memory.backends.semantic import SemanticBackend
+from xteam_agents.memory.backends.task import TaskBackend
 from xteam_agents.memory.embeddings import EmbeddingProvider
 from xteam_agents.models.audit import AuditEntry, AuditEventType
 from xteam_agents.models.memory import (
@@ -44,6 +45,7 @@ class MemoryManager:
         self.semantic = SemanticBackend(settings)
         self.procedural = ProceduralBackend(settings)
         self.audit = AuditBackend(settings)
+        self.task = TaskBackend(settings)
         self.embeddings = EmbeddingProvider(settings)
         self._connected = False
 
@@ -53,6 +55,7 @@ class MemoryManager:
         await self.semantic.connect()
         await self.procedural.connect()
         await self.audit.connect()
+        await self.task.connect()
         self._connected = True
         logger.info("memory_manager_connected")
 
@@ -62,6 +65,7 @@ class MemoryManager:
         await self.semantic.disconnect()
         await self.procedural.disconnect()
         await self.audit.disconnect()
+        await self.task.disconnect()
         self._connected = False
         logger.info("memory_manager_disconnected")
 
@@ -72,6 +76,7 @@ class MemoryManager:
             "semantic": await self.semantic.health_check(),
             "procedural": await self.procedural.health_check(),
             "audit": await self.audit.health_check(),
+            "task": await self.task.health_check(),
         }
 
     # ==================== EPISODIC MEMORY (Any node can write) ====================

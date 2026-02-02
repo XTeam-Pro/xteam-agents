@@ -132,12 +132,35 @@ FEEDBACK: [Your detailed feedback]
 
         # Parse decision
         decision = _parse_decision(validation_content)
+        
+        # SELF-HEALING LOGIC
+        # If execution failed (e.g., Python error) or validation failed but is recoverable,
+        # we can try to auto-correct without a full replan if it's a simple fix.
+        # For now, we map "NEEDS_REPLAN" to a replan which goes back to Architect.
+        # But we could have a "NEEDS_RETRY" state that goes back to Worker with feedback.
+        
+        # Current Flow:
+        # APPROVED -> commit
+        # NEEDS_REPLAN -> plan (Architect)
+        # FAILED -> end
+        
+        # To implement Self-Healing, we treat NEEDS_REPLAN as a mechanism to fix issues.
+        # The Architect will see the feedback and adjust the plan or instructions.
+        
         is_validated = decision == "APPROVED"
         should_replan = decision == "NEEDS_REPLAN"
         is_failed = decision == "FAILED"
 
         # Extract feedback
         feedback = _extract_feedback(validation_content)
+        
+        # If we have run out of validation attempts, force fail to avoid infinite loops
+        if state.validation_attempts >= 3 and should_replan:
+            logger.warning("max_validation_attempts_reached", task_id=str(state.task_id))
+            should_replan = False
+            is_failed = True
+            decision = "FAILED (Max Attempts)"
+            feedback = f"Max validation attempts reached. Last feedback: {feedback}"
 
         # Log validation result
         event_type = AuditEventType.VALIDATION_PASSED

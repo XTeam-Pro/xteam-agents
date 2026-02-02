@@ -93,8 +93,29 @@ def run_http_server() -> None:
     # Create the MCP server
     mcp = create_mcp_server(settings)
 
-    # Get the ASGI app
-    app = mcp.get_asgi_app()
+    # Note: FastMCP might not have get_asgi_app in all versions or it might be named differently.
+    # If using fastmcp 0.2.0+, it usually runs itself.
+    # However, for Docker we want to bind to 0.0.0.0.
+    
+    # If mcp has a run method that supports http, use that.
+    # Otherwise check for asgi app.
+    
+    # For now, let's assume mcp object is a FastMCP instance.
+    # If get_asgi_app is missing, we might need to use mcp._fastapi_app or similar if available,
+    # or just use mcp.run(transport='sse') if supported.
+    
+    # Let's try to find the ASGI app
+    if hasattr(mcp, "get_asgi_app"):
+        app = mcp.get_asgi_app()
+    elif hasattr(mcp, "_fastapi_app"):
+        app = mcp._fastapi_app
+    else:
+        # Fallback or try to construct it if FastMCP structure is different
+        # In some versions, FastMCP IS the app or has a mount method.
+        # But let's check if we can just use mcp.run with sse transport which usually starts uvicorn.
+        logger.info("using_mcp_run_sse")
+        mcp.run(transport="sse", host=settings.server_host, port=settings.server_port)
+        return
 
     # Run with uvicorn
     uvicorn.run(

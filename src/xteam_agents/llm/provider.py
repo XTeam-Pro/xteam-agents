@@ -93,16 +93,9 @@ class LLMProvider:
     def get_model_for_agent(self, agent_name: str) -> BaseChatModel:
         """
         Get model for a specific agent.
-
-        Currently returns the same model for all agents,
-        but could be extended for agent-specific configs.
-
-        Args:
-            agent_name: Name of the agent (analyst, architect, worker, reviewer)
-
-        Returns:
-            Chat model for the agent
+        
+        Can handle standard agents or dynamic personas.
         """
         # For now, all agents use the same model
-        # Could extend to support different models per agent
+        # Could extend to support different models per agent or specific configs for personas
         return self.model

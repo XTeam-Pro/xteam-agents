@@ -18,6 +18,8 @@ from xteam_agents.models.state import AgentState
 from xteam_agents.models.task import Priority, TaskInfo, TaskRequest, TaskResult, TaskStatus
 from xteam_agents.perception.engine import PerceptionEngine
 
+import httpx
+
 logger = structlog.get_logger()
 
 
@@ -108,7 +110,7 @@ class TaskOrchestrator:
             UUID of the created task
         """
         if not self._initialized:
-            raise RuntimeError("Orchestrator not initialized. Call setup() first.")
+            await self.setup()
 
         task_id = uuid4()
         now = datetime.utcnow()
@@ -123,6 +125,9 @@ class TaskOrchestrator:
         )
 
         self._tasks[task_id] = task_info
+
+        # Persist task
+        await self.memory_manager.task.save_task(task_info)
 
         # Log task creation
         await self.memory_manager.log_audit(
@@ -151,6 +156,31 @@ class TaskOrchestrator:
 
         return task_id
 
+    async def _send_webhook(self, task_id: UUID, status: str, payload: dict) -> None:
+        """Send a webhook notification if configured."""
+        webhook_url = self.settings.n8n_url  # Using N8N_URL as base or specific webhook URL
+        # Or better, check for a specific WEBHOOK_URL env var
+        # For now, we'll assume we send to N8N_URL/webhook/xteam-agents
+        
+        # If N8N_URL is set, we construct a webhook URL
+        if not self.settings.n8n_url:
+            return
+
+        url = f"{self.settings.n8n_url}/webhook/xteam-agents"
+        
+        data = {
+            "task_id": str(task_id),
+            "status": status,
+            "timestamp": datetime.utcnow().isoformat(),
+            **payload
+        }
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(url, json=data, timeout=5.0)
+        except Exception as e:
+            logger.warning("webhook_failed", error=str(e), url=url)
+
     async def _execute_task(self, task_id: UUID, request: TaskRequest) -> None:
         """Execute a task through the graph."""
         try:
@@ -169,6 +199,9 @@ class TaskOrchestrator:
                     description="Task execution started",
                 )
             )
+            
+            # Send Webhook: STARTED
+            await self._send_webhook(task_id, "started", {"description": request.description})
 
             # Create initial state
             initial_state = AgentState(
@@ -214,6 +247,8 @@ class TaskOrchestrator:
                                     ),
                                 }
                             )
+                            # Update DB
+                            await self.memory_manager.task.save_task(self._tasks[task_id])
 
                         final_state = node_state
 
@@ -240,12 +275,21 @@ class TaskOrchestrator:
                     "completed_at": datetime.utcnow(),
                 }
             )
+            
+            # Persist final state
+            await self.memory_manager.task.save_task(self._tasks[task_id])
 
             logger.info(
                 "task_completed",
                 task_id=str(task_id),
                 status=status.value,
             )
+            
+            # Send Webhook: COMPLETED/FAILED
+            await self._send_webhook(task_id, status.value, {
+                "result": final_state.get("execution_result") if final_state else None,
+                "error": error
+            })
 
         except asyncio.CancelledError:
             self._tasks[task_id] = self._tasks[task_id].model_copy(
@@ -254,6 +298,8 @@ class TaskOrchestrator:
                     "completed_at": datetime.utcnow(),
                 }
             )
+            await self.memory_manager.task.save_task(self._tasks[task_id])
+            
             await self.memory_manager.log_audit(
                 AuditEntry(
                     task_id=task_id,
@@ -276,6 +322,8 @@ class TaskOrchestrator:
                     "completed_at": datetime.utcnow(),
                 }
             )
+            await self.memory_manager.task.save_task(self._tasks[task_id])
+            
             await self.memory_manager.log_audit(
                 AuditEntry(
                     task_id=task_id,
@@ -341,6 +389,14 @@ class TaskOrchestrator:
         limit: int = 100,
     ) -> list[TaskInfo]:
         """List tasks, optionally filtered by status."""
+        # Use DB if available, fallback to memory
+        if self.memory_manager and self.memory_manager._connected:
+             tasks = await self.memory_manager.task.list_tasks(limit)
+             if status:
+                 tasks = [t for t in tasks if t.status == status]
+             return tasks
+        
+        # Fallback to in-memory
         tasks = list(self._tasks.values())
 
         if status:
