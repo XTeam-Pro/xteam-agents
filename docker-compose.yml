@@ -1,6 +1,53 @@
 version: '3.8'
 
 services:
+  # Traefik Reverse Proxy
+  traefik:
+    image: traefik:v2.11
+    container_name: xteam-traefik
+    command:
+      # Global
+      - "--log.level=INFO"
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      # Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=xteam-network"
+      # Let's Encrypt
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${LETSENCRYPT_EMAIL:-cert@example.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    environment:
+      - TRAEFIK_DOMAIN=traefik.${DOMAIN:-example.com}
+    labels:
+      # Dashboard
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      # Basic auth for dashboard (username: admin, password: changeme)
+      # Generate new password with: htpasswd -nb admin your_password
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$apr1$$h7m3y9qo$$X0v6RkK8F5K5Z5Z5Z5Z5Z1"
+    restart: unless-stopped
+    networks:
+      - xteam-network
+
   # XTeam Agents MCP Server
   mcp-server:
     build:
@@ -8,9 +55,16 @@ services:
       dockerfile: Dockerfile
     container_name: xteam-mcp-server
     command: ["python", "-m", "xteam_agents", "--http"]
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-server.rule=Host(`${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.mcp-server.entrypoints=websecure"
+      - "traefik.http.routers.mcp-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mcp-server.loadbalancer.server.port=8000"
     environment:
+      - MCP_SERVER_DOMAIN=${DOMAIN:-example.com}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -47,8 +101,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: xteam-redis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -65,9 +119,17 @@ services:
   qdrant:
     image: qdrant/qdrant:latest
     container_name: xteam-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
+    expose:
+      - "6333"
+      - "6334"
+    environment:
+      - QDRANT_DOMAIN=qdrant.${DOMAIN:-example.com}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qdrant.rule=Host(`qdrant.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.qdrant.entrypoints=websecure"
+      - "traefik.http.routers.qdrant.tls.certresolver=letsencrypt"
+      - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
     volumes:
       - qdrant-data:/qdrant/storage
     environment:
@@ -85,13 +147,22 @@ services:
   neo4j:
     image: neo4j:5-community
     container_name: xteam-neo4j
-    ports:
-      - "7474:7474"
-      - "7687:7687"
+    expose:
+      - "7474"
+      - "7687"
+    environment:
+      - NEO4J_DOMAIN=neo4j.${DOMAIN:-example.com}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neo4j.rule=Host(`neo4j.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.neo4j.entrypoints=websecure"
+      - "traefik.http.routers.neo4j.tls.certresolver=letsencrypt"
+      - "traefik.http.services.neo4j.loadbalancer.server.port=7474"
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
     environment:
+      - NEO4J_DOMAIN=neo4j.${DOMAIN:-example.com}
       - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-xteam_password}
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
@@ -109,8 +180,8 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: xteam-postgres
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
@@ -130,20 +201,28 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: xteam-n8n
-    ports:
-      - "5678:5678"
+    expose:
+      - "5678"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
     volumes:
       - n8n-data:/home/node/.n8n
     environment:
+      - N8N_DOMAIN=n8n.${DOMAIN:-example.com}
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-xteam_password}
-      - WEBHOOK_URL=http://n8n:5678/
+      - WEBHOOK_URL=https://n8n.${DOMAIN:-example.com}/
     restart: unless-stopped
     networks:
       - xteam-network
 
 volumes:
+  traefik-certificates:
   redis-data:
   qdrant-data:
   neo4j-data:

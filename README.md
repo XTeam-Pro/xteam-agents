@@ -152,6 +152,29 @@ mypy src/xteam_agents
 ruff check src/
 ```
 
+## Production Deployment
+
+For production deployment with Traefik reverse proxy and automatic SSL certificates, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Quick start for production:
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Run setup script
+sudo ./scripts/setup-traefik.sh
+```
+
+Services will be available at:
+- https://example.com (MCP Server)
+- https://traefik.example.com (Traefik Dashboard)
+- https://qdrant.example.com (Vector DB)
+- https://neo4j.example.com (Graph DB)
+- https://n8n.example.com (Workflows)
+
+See [TRAEFIK.md](TRAEFIK.md) for detailed Traefik configuration.
+
 ## License
 
 MIT

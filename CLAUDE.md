@@ -17,6 +17,29 @@ docker-compose up -d
 docker-compose down
 ```
 
+### Production Deployment
+
+For production deployment with Traefik reverse proxy and SSL certificates:
+
+```bash
+# Run automated setup script
+sudo ./scripts/setup-traefik.sh
+
+# Or manually
+cp .env.example .env
+# Edit .env with production values
+docker-compose up -d
+```
+
+**Production URLs** (when deployed on example.com):
+- https://example.com - MCP Server
+- https://traefik.example.com - Traefik Dashboard
+- https://qdrant.example.com - Qdrant UI
+- https://neo4j.example.com - Neo4j Browser
+- https://n8n.example.com - n8n Workflows
+
+See [DEPLOYMENT.md](/root/xteam-agents/DEPLOYMENT.md) and [TRAEFIK.md](/root/xteam-agents/TRAEFIK.md) for details.
+
 ### Running the System
 
 ```bash
@@ -196,6 +219,23 @@ Uses FastMCP to expose three tool categories:
 2. Decorate with `@mcp.tool()`
 3. Register in `server/app.py` during server initialization
 4. Tool automatically exposed via MCP protocol
+
+## Docker and Traefik Setup
+
+The project includes Traefik reverse proxy for production deployments:
+
+- **Automatic HTTPS**: Let's Encrypt certificates with auto-renewal
+- **Service Discovery**: Docker labels for automatic routing
+- **Email**: cert@example.com for Let's Encrypt notifications
+- **Server IP**: YOUR_SERVER_IP (production)
+
+**Traefik Configuration in docker-compose.yml**:
+- All services use `expose` instead of `ports` (internal only)
+- Traefik labels define routing rules and SSL configuration
+- Services are only accessible via HTTPS through Traefik
+- HTTP automatically redirects to HTTPS
+
+**Important**: When modifying services, use Traefik labels for external access, not direct port mapping.
 
 ## Configuration
 
