@@ -166,7 +166,14 @@ class EpisodicBackend(MemoryBackend):
             if count >= query.limit:
                 break
 
-            artifact = await self.retrieve(UUID(artifact_id_str))
+            try:
+                # Validate UUID string format before parsing
+                uuid_obj = UUID(artifact_id_str)
+                artifact = await self.retrieve(uuid_obj)
+            except ValueError:
+                logger.warning("invalid_uuid_in_redis_set", artifact_id=artifact_id_str)
+                continue
+            
             if artifact is None:
                 continue
 
@@ -221,7 +228,14 @@ class EpisodicBackend(MemoryBackend):
             if len(artifacts) >= limit:
                 break
 
-            artifact = await self.retrieve(UUID(artifact_id_str))
+            try:
+                # Validate UUID format
+                uuid_obj = UUID(artifact_id_str)
+                artifact = await self.retrieve(uuid_obj)
+            except ValueError:
+                logger.warning("invalid_uuid_in_redis_list", artifact_id=artifact_id_str)
+                continue
+                
             if artifact:
                 artifacts.append(artifact)
 

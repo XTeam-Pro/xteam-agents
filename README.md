@@ -1,10 +1,16 @@
 # XTeam Agents
 
-**Cognitive Operating System (Enterprise Grade)**
-Status: **APPROVED FOR DEVELOPMENT**
+**Cognitive Operating System + Adversarial Agent Team (Enterprise Grade)**
+Status: **PRODUCTION READY**
 Reference: [SSOT.md](./SSOT.md) (Single Source of Truth)
 
-Cognitive Operating System with configurable LLM (OpenAI/Anthropic), 4 memory backends (Redis, Qdrant, Neo4j, PostgreSQL), LangGraph orchestration, and full MCP control surface via FastMCP.
+Integrated AI system combining:
+- **Cognitive OS**: Validated knowledge pipeline with 4 memory backends
+- **Adversarial Agent Team**: 21 AI agents for high-quality complex tasks
+- **Automatic Routing**: Simple tasks → fast, Complex tasks → thorough
+- **Shared Resources**: Unified memory and LLM provider
+
+✨ **NEW**: Adversarial Agent Team integration complete! See [INTEGRATION_ARCHITECTURE.md](./INTEGRATION_ARCHITECTURE.md)
 
 ## Architecture
 
@@ -30,6 +36,25 @@ START → [analyze] → [plan] → [execute] → [validate] → route_after_vali
 | Worker | Execute plans, perform actions | Read all, Write episodic |
 | Reviewer | Validate results | Read all, Write episodic |
 | Commit Node | Store validated knowledge | **Write shared (semantic, procedural)** |
+
+### Integrated Execution
+
+**NEW**: The system now automatically routes tasks based on complexity:
+
+| Complexity | Mode | Execution | Time |
+|------------|------|-----------|------|
+| simple | Standard | Single LLM call | ~5s |
+| medium | Standard | Single LLM call | ~10s |
+| complex | Adversarial | 21-agent team | ~60s |
+| critical | Adversarial | 21-agent team + extended validation | ~120s |
+
+**Adversarial Agent Team** (activated for complex/critical tasks):
+- 1 Orchestrator (supreme coordinator)
+- 10 Agent-Critic Pairs (iterative refinement)
+- 5D Quality Scoring (Correctness, Completeness, Quality, Performance, Security)
+- Conflict resolution and final approval
+
+See [INTEGRATION_USAGE.md](./INTEGRATION_USAGE.md) for details.
 
 ### Memory Backends
 
@@ -96,6 +121,32 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   }
 }
 ```
+
+### Try Integrated Execution
+
+Run the example to see both standard and adversarial execution:
+
+```bash
+# Run integrated execution example
+python examples/integrated_execution.py
+
+# Or try adversarial team standalone
+python examples/adversarial_example.py
+```
+
+**Example output:**
+```
+🔹 SIMPLE TASK → Standard Execution (5s)
+🔸 COMPLEX TASK → Adversarial Team (60s)
+   • 21 agents collaborate
+   • Quality Score: 8.5/10
+   • All pairs approved
+```
+
+**Documentation:**
+- [Integration Architecture](./INTEGRATION_ARCHITECTURE.md) - Full technical details
+- [Integration Usage](./INTEGRATION_USAGE.md) - How to use the integrated system
+- [Team Roster](./TEAM_ROSTER.md) - All 21 agents
 
 ## MCP Tools
 

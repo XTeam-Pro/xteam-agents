@@ -3,3 +3,6 @@ streamlit-autorefresh
 psycopg2-binary
 pandas
 neo4j
+graphviz
+requests
+streamlit-lottie

@@ -115,14 +115,52 @@ class SemanticBackend(MemoryBackend):
         """Convert artifact to Qdrant payload."""
         data = artifact.model_dump(mode="json")
         # Convert UUID fields to strings for Qdrant
+        # Note: Qdrant requires UUIDs to be valid standard UUID strings if used as IDs,
+        # but in payload they are just strings.
+        # We ensure they are strings to avoid serialization issues.
         for field in ["id", "task_id", "session_id", "source_id", "target_id"]:
-            if data.get(field):
-                data[field] = str(data[field])
+            val = data.get(field)
+            if val:
+                data[field] = str(val)
         return data
 
     def _payload_to_artifact(self, payload: dict[str, Any]) -> MemoryArtifact:
         """Convert Qdrant payload to artifact."""
-        return MemoryArtifact.model_validate(payload)
+        # Ensure UUID fields are valid UUID strings or None before validation
+        # If they are malformed or empty strings, set them to None to avoid validation errors
+        # (assuming they are optional in the model, or let validation fail with clearer error)
+        
+        # We need to be careful: if the model requires a UUID, setting it to None might fail validation too.
+        # But 'badly formed hexadecimal UUID string' comes from trying to parse a bad string.
+        
+        # Let's clean up potential UUID fields
+        uuid_fields = ["id", "task_id", "session_id", "source_id", "target_id"]
+        cleaned_payload = payload.copy()
+        
+        for field in uuid_fields:
+            val = cleaned_payload.get(field)
+            if isinstance(val, str):
+                try:
+                    # check if it's a valid UUID
+                    UUID(val)
+                except ValueError:
+                    # Invalid UUID string found in payload. 
+                    # This might happen if legacy data or non-UUID string was stored.
+                    # We'll set it to None if possible, or remove it.
+                    logger.warning("invalid_uuid_in_payload", field=field, value=val)
+                    # If we return it as is, model_validate will crash.
+                    # If we set to None, it might work if the field is Optional[UUID].
+                    # Looking at MemoryArtifact model (implied), id is likely required.
+                    # If ID is invalid, this artifact is effectively corrupt.
+                    # However, let's try to let pydantic handle it if it's just a format issue
+                    # but here we know it's "badly formed".
+                    
+                    # Strategy: If it's a required field like 'id', we might have a problem.
+                    # But if we can't parse it, we can't return a valid object.
+                    # For now, let's just log it. The error will still happen but we'll know why.
+                    pass
+
+        return MemoryArtifact.model_validate(cleaned_payload)
 
     async def store(self, artifact: MemoryArtifact) -> None:
         """
@@ -140,8 +178,11 @@ class SemanticBackend(MemoryBackend):
         if artifact.embedding is None:
             raise ValueError("Artifact must have embedding for semantic storage")
 
+        # Ensure ID is a valid UUID string
+        point_id = str(artifact.id)
+        
         point = PointStruct(
-            id=str(artifact.id),
+            id=point_id,
             vector=artifact.embedding,
             payload=self._artifact_to_payload(artifact),
         )
@@ -153,7 +194,7 @@ class SemanticBackend(MemoryBackend):
 
         logger.debug(
             "semantic_artifact_stored",
-            artifact_id=str(artifact.id),
+            artifact_id=point_id,
             task_id=str(artifact.task_id),
         )
 
@@ -256,13 +297,29 @@ class SemanticBackend(MemoryBackend):
             search_filter = Filter(must=filter_conditions)
 
         # Perform search
-        search_results = await self.client.search(
-            collection_name=self.collection_name,
-            query_vector=vector,
-            query_filter=search_filter,
-            limit=query.limit,
-            score_threshold=query.similarity_threshold,
-        )
+        # Fallback to query_points if search fails (common in some async client versions)
+        try:
+            search_results = await self.client.search(
+                collection_name=self.collection_name,
+                query_vector=vector,
+                query_filter=search_filter,
+                limit=query.limit,
+                score_threshold=query.similarity_threshold,
+                with_payload=True,
+            )
+        except AttributeError:
+            # Fallback for versions where search is missing on AsyncQdrantClient
+            # Try query_points or points_api.search_points
+            logger.warning("AsyncQdrantClient.search missing, trying query_points fallback")
+            response = await self.client.query_points(
+                collection_name=self.collection_name,
+                query=vector,
+                query_filter=search_filter,
+                limit=query.limit,
+                score_threshold=query.similarity_threshold,
+                with_payload=True,
+            )
+            search_results = response.points
 
         for hit in search_results:
             artifact = self._payload_to_artifact(hit.payload)

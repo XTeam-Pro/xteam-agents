@@ -135,10 +135,36 @@ class ProceduralBackend(MemoryBackend):
         import ast
         from datetime import datetime
 
+        # Helper to safely parse UUID
+        def safe_uuid(val):
+            if not val:
+                return None
+            try:
+                return UUID(str(val))
+            except ValueError:
+                logger.warning("invalid_uuid_in_neo4j_props", value=val)
+                return None # Or generate a new one? Better to fail gracefully or let pydantic handle
+
+        # We construct dictionary first to handle safe parsing
+        data = props.copy()
+        
+        # Parse UUIDs explicitly to catch errors early
+        try:
+            art_id = UUID(props["id"])
+            task_id = UUID(props["task_id"])
+            session_id = safe_uuid(props.get("session_id"))
+        except ValueError as e:
+            logger.error("fatal_uuid_error_in_procedural", error=str(e), props=props)
+            # If ID or TaskID is bad, we can't really use this artifact.
+            # But raising here might crash the whole query loop.
+            # Let's re-raise to see full trace or handle it?
+            # User sees task failed, so raising is "correct" but we want robustness.
+            raise ValueError(f"Corrupted artifact in Neo4j: {e}")
+
         return MemoryArtifact(
-            id=UUID(props["id"]),
-            task_id=UUID(props["task_id"]),
-            session_id=UUID(props["session_id"]) if props.get("session_id") else None,
+            id=art_id,
+            task_id=task_id,
+            session_id=session_id,
             content=props["content"],
             content_type=props.get("content_type", "text"),
             memory_type=MemoryType(props["memory_type"]),

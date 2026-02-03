@@ -6,12 +6,14 @@ import structlog
 from langgraph.graph import END, StateGraph
 
 from xteam_agents.action.executor import ActionExecutor
+from xteam_agents.agents.adversarial_graph import create_adversarial_graph
 from xteam_agents.config import Settings
 from xteam_agents.graph.edges import route_after_validation
 from xteam_agents.graph.nodes.analyze import create_analyze_node
 from xteam_agents.graph.nodes.commit import create_commit_node
 from xteam_agents.graph.nodes.execute import create_execute_node
 from xteam_agents.graph.nodes.plan import create_plan_node
+from xteam_agents.graph.nodes.reflect import create_reflect_node
 from xteam_agents.graph.nodes.validate import create_validate_node
 from xteam_agents.llm.provider import LLMProvider
 from xteam_agents.memory.manager import MemoryManager
@@ -61,12 +63,28 @@ def build_cognitive_graph(
     # Create the state graph
     graph = StateGraph(AgentState)
 
+    # Create adversarial graph for complex/critical tasks
+    logger.info("building_adversarial_graph")
+    adversarial_graph = create_adversarial_graph(
+        settings,
+        memory_manager,
+        llm_provider.get_model_for_agent("orchestrator"),  # Shared LLM for all agents
+    )
+    logger.info("adversarial_graph_built")
+
     # Create node functions
     analyze_node = create_analyze_node(llm_provider, memory_manager)
     plan_node = create_plan_node(llm_provider, memory_manager)
-    execute_node = create_execute_node(llm_provider, memory_manager, action_executor)
+    execute_node = create_execute_node(
+        llm_provider,
+        memory_manager,
+        action_executor,
+        adversarial_graph,  # ← Pass adversarial graph
+        settings,           # ← Pass settings
+    )
     validate_node = create_validate_node(llm_provider, memory_manager)
     commit_node = create_commit_node(memory_manager)
+    reflect_node = create_reflect_node(llm_provider, memory_manager)
 
     # Add nodes to graph
     graph.add_node("analyze", analyze_node)
@@ -74,7 +92,7 @@ def build_cognitive_graph(
     graph.add_node("execute", execute_node)
     graph.add_node("validate", validate_node)
     graph.add_node("commit", commit_node)
-    graph.add_node("fail_handler", _fail_handler_node(memory_manager))
+    graph.add_node("reflect", reflect_node)
 
     # Set entry point
     graph.set_entry_point("analyze")
@@ -86,19 +104,30 @@ def build_cognitive_graph(
     graph.add_edge("execute", "validate")
 
     # Conditional routing after validation
+    def validate_router(state: AgentState) -> str:
+        if state.is_validated:
+            return "commit"
+        else:
+            # If validation failed, go back to planning (re-plan)
+            # Unless we've exceeded max iterations
+            if state.iteration_count >= 5:  # Max iterations
+                # Force fail
+                return "reflect" # Failed -> Reflect
+            return "plan"
+
     graph.add_conditional_edges(
         "validate",
-        route_after_validation,
+        validate_router,
         {
             "commit": "commit",
-            "plan": "plan",  # Replan loop
-            "fail": "fail_handler",
+            "plan": "plan",
+            "reflect": "reflect",
         },
     )
 
     # Terminal edges
-    graph.add_edge("commit", END)
-    graph.add_edge("fail_handler", END)
+    graph.add_edge("commit", "reflect")
+    graph.add_edge("reflect", END)
 
     logger.info("cognitive_graph_built")
 

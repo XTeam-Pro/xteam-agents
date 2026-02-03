@@ -1,12 +1,15 @@
 """Worker agent node."""
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import structlog
 from langchain_core.messages import AIMessage
+from langgraph.graph import StateGraph
 
 from xteam_agents.action.executor import ActionExecutor
+from xteam_agents.config import Settings
 from xteam_agents.graph.prompts import WORKER_SYSTEM_PROMPT, DYNAMIC_PERSONA_TEMPLATE
+from xteam_agents.integration.executor import UnifiedExecutor
 from xteam_agents.llm.provider import LLMProvider
 from xteam_agents.llm.tools import create_action_tools, create_memory_tools
 from xteam_agents.memory.manager import MemoryManager
@@ -49,6 +52,8 @@ def create_execute_node(
     llm_provider: LLMProvider,
     memory_manager: MemoryManager,
     action_executor: ActionExecutor,
+    adversarial_graph: Optional[StateGraph] = None,
+    settings: Optional[Settings] = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the execute node function.
@@ -58,10 +63,25 @@ def create_execute_node(
     - Uses action tools to perform work
     - Records results in episodic memory
     - Does NOT write to shared memory
-    
+
+    Integration with Adversarial Team:
+    - For complex/critical tasks, uses UnifiedExecutor which routes to Adversarial Team
+    - For simple/medium tasks, uses standard execution with dynamic personas
+
     Supports DYNAMIC PERSONAS:
     - If a subtask has an 'assigned_agent', the worker adopts that persona.
     """
+
+    # Initialize UnifiedExecutor if adversarial_graph is provided
+    unified_executor = None
+    if adversarial_graph and settings:
+        unified_executor = UnifiedExecutor(
+            llm_provider,
+            memory_manager,
+            action_executor,
+            adversarial_graph,
+            settings,
+        )
 
     async def execute_node(state: AgentState) -> dict[str, Any]:
         """Execute the execute node."""
@@ -82,6 +102,23 @@ def create_execute_node(
                 node_name="execute",
                 description=f"Entered execute node with {len(state.subtasks)} subtasks",
             )
+        )
+
+        # Route to UnifiedExecutor for complex/critical tasks
+        complexity = state.context.get("complexity", "simple")
+        if unified_executor and complexity in ["complex", "critical"]:
+            logger.info(
+                "routing_to_unified_executor",
+                task_id=str(state.task_id),
+                complexity=complexity,
+            )
+            return await unified_executor.execute(state)
+
+        # Standard execution for simple/medium tasks
+        logger.info(
+            "using_standard_execution",
+            task_id=str(state.task_id),
+            complexity=complexity,
         )
 
         # Get pending subtasks

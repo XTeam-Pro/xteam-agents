@@ -1,0 +1,63 @@
+"""Adversarial agent team package initialization."""
+
+from .adversarial_config import (
+    AGENT_CONFIGS,
+    AGENT_PAIRS,
+    AgentConfig,
+    AgentPairConfig,
+    AgentPairType,
+    AgentRole,
+    CriticEvaluation,
+    CriticStrategy,
+    PairMetrics,
+    PairStatus,
+    get_agent_config,
+    get_agent_for_critic,
+    get_critic_for_agent,
+    get_pair_config,
+    is_approval_met,
+)
+from .adversarial_state import (
+    AdversarialAgentState,
+    AgentOutput,
+    Conflict,
+    CriticReview,
+    OrchestratorDecision,
+    OrchestratorFinalDecision,
+    PairResult,
+    merge_artifacts,
+    merge_conflicts,
+    merge_messages,
+    merge_pair_results,
+)
+
+__all__ = [
+    # Config
+    "AgentRole",
+    "AgentConfig",
+    "AgentPairConfig",
+    "AgentPairType",
+    "CriticStrategy",
+    "CriticEvaluation",
+    "PairStatus",
+    "PairMetrics",
+    "AGENT_CONFIGS",
+    "AGENT_PAIRS",
+    "get_agent_config",
+    "get_pair_config",
+    "get_critic_for_agent",
+    "get_agent_for_critic",
+    "is_approval_met",
+    # State
+    "AdversarialAgentState",
+    "OrchestratorDecision",
+    "OrchestratorFinalDecision",
+    "AgentOutput",
+    "CriticReview",
+    "PairResult",
+    "Conflict",
+    "merge_messages",
+    "merge_artifacts",
+    "merge_conflicts",
+    "merge_pair_results",
+]

@@ -137,6 +137,70 @@ All agents except commit_node:
 - Can write to episodic (private) memory
 - Cannot directly write to semantic/procedural memory
 
+### Integrated System: Cognitive OS + Adversarial Agent Team
+
+**NEW**: The system now integrates the Adversarial Agent Team for complex tasks:
+
+```
+User Request
+    ↓
+Cognitive OS (analyze → plan → execute → validate → commit)
+                              ↓
+                    UnifiedExecutor (routing)
+                    ├─ simple/medium → Standard LLM
+                    └─ complex/critical → Adversarial Team
+                                              ↓
+                                    21 AI Agents (1 Orchestrator + 10 pairs)
+                                              ↓
+                                    Agent-Critic iterative refinement
+                                              ↓
+                                    5D Quality Scoring
+                                              ↓
+                                    Results back to Cognitive OS
+```
+
+**Execution Modes:**
+
+| Complexity | Execution Mode | Use Case | Agents Involved |
+|------------|----------------|----------|-----------------|
+| simple | Standard | Typo fixes, logging | Single LLM call |
+| medium | Standard | API endpoints, tests | Single LLM call |
+| complex | Adversarial | Architecture, refactoring | 21-agent team |
+| critical | Adversarial | Security, migrations | 21-agent team + extended validation |
+
+**Adversarial Agent Team** (21 agents total):
+- **1 Orchestrator**: Supreme coordinator, classifies tasks, resolves conflicts
+- **10 Agent-Critic Pairs**:
+  - TechLead ↔ TechLeadCritic
+  - Architect ↔ ArchitectCritic
+  - Backend ↔ BackendCritic
+  - Frontend ↔ FrontendCritic
+  - Data ↔ DataCritic
+  - DevOps ↔ DevOpsCritic
+  - QA ↔ QACritic (Perfectionist strategy)
+  - AIArchitect ↔ AIArchitectCritic
+  - Security (Blue Team) ↔ SecurityCritic (Red Team - Adversarial)
+  - Performance ↔ PerformanceCritic (Adversarial)
+
+**Integration Points:**
+- `src/xteam_agents/integration/state_adapter.py` - State conversion (AgentState ↔ AdversarialAgentState)
+- `src/xteam_agents/integration/executor.py` - UnifiedExecutor routes by complexity
+- `src/xteam_agents/graph/nodes/analyze.py` - Classifies task complexity
+- `src/xteam_agents/graph/nodes/execute.py` - Integrated execution with routing
+- `src/xteam_agents/graph/builder.py` - Creates both graphs, shares resources
+
+**Shared Resources:**
+- **MemoryManager**: All agents (cognitive + adversarial) use same instance
+- **LLM Provider**: Connection pooling across all agents
+- **Memory Invariants**: Enforced for both systems
+
+**Key Files:**
+- `src/xteam_agents/agents/adversarial_graph.py` - Adversarial team LangGraph
+- `src/xteam_agents/agents/orchestrator.py` - Orchestrator agent
+- `src/xteam_agents/agents/base.py` - BaseAgent and BaseCritic classes
+- `src/xteam_agents/agents/nodes/pairs/*.py` - All 10 agent-critic pairs
+- `examples/integrated_execution.py` - Working example of both modes
+
 ### LangGraph State Flow
 
 The cognitive graph is built using LangGraph's `StateGraph`:

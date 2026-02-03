@@ -96,6 +96,131 @@ ensuring knowledge quality and consistency.
     # Add health check endpoint
     from starlette.requests import Request
     from starlette.responses import JSONResponse
+    from pydantic import BaseModel
+    from xteam_agents.models.task import TaskRequest, Priority
+    
+    class TaskSubmitRequest(BaseModel):
+        description: str
+        priority: int = 3
+        context: dict | None = None
+
+    @mcp.custom_route("/api/tasks", methods=["POST"])
+    async def submit_task_endpoint(request: Request) -> JSONResponse:
+        """Submit a new task via REST API."""
+        try:
+            body = await request.json()
+            data = TaskSubmitRequest(**body)
+            
+            task_req = TaskRequest(
+                description=data.description,
+                priority=Priority(data.priority),
+                context=data.context or {}
+            )
+            
+            result = await mcp._orchestrator.submit_task(task_req)
+            return JSONResponse({"task_id": str(result)})
+        except Exception as e:
+            logger.error("api_submit_task_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/tasks/{task_id}/cancel", methods=["POST"])
+    async def cancel_task_endpoint(request: Request) -> JSONResponse:
+        """Cancel a task via REST API."""
+        try:
+            task_id = request.path_params["task_id"]
+            result = await mcp._orchestrator.cancel_task(task_id)
+            return JSONResponse(result)
+        except Exception as e:
+            logger.error("api_cancel_task_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- Filesystem API ---
+    @mcp.custom_route("/api/files/list", methods=["GET"])
+    async def list_files_endpoint(request: Request) -> JSONResponse:
+        try:
+            path = request.query_params.get("path", ".")
+            # Reuse the tool logic (hacky but effective)
+            # Better would be to access the registered tool directly
+            from xteam_agents.server.tools.filesystem_tools import _validate_path
+            import os
+            
+            target_path = _validate_path(path)
+            if not target_path.exists() or not target_path.is_dir():
+                return JSONResponse({"error": "Invalid directory"}, status_code=400)
+                
+            entries = []
+            for entry in os.scandir(target_path):
+                entries.append({
+                    "name": entry.name,
+                    "type": "directory" if entry.is_dir() else "file",
+                    "size": entry.stat().st_size if entry.is_file() else None,
+                })
+            return JSONResponse({"entries": sorted(entries, key=lambda x: (x["type"] != "directory", x["name"]))})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/files/read", methods=["GET"])
+    async def read_file_endpoint(request: Request) -> JSONResponse:
+        try:
+            path = request.query_params.get("path")
+            if not path:
+                return JSONResponse({"error": "Path required"}, status_code=400)
+                
+            from xteam_agents.server.tools.filesystem_tools import _validate_path
+            target_path = _validate_path(path)
+            
+            if not target_path.is_file():
+                return JSONResponse({"error": "Not a file"}, status_code=400)
+                
+            content = target_path.read_text(encoding="utf-8")
+            return JSONResponse({"content": content})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- Memory API ---
+    @mcp.custom_route("/api/memory/search", methods=["GET"])
+    async def search_memory_endpoint(request: Request) -> JSONResponse:
+        try:
+            query = request.query_params.get("query")
+            if not query:
+                return JSONResponse({"error": "Query required"}, status_code=400)
+            
+            # Use orchestrator's memory manager
+            results = await mcp._orchestrator.memory.search_knowledge(query, limit=10)
+            return JSONResponse({"results": [r.model_dump() for r in results]})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/chat", methods=["POST"])
+    async def chat_endpoint(request: Request) -> JSONResponse:
+        try:
+            body = await request.json()
+            message = body.get("message")
+            if not message:
+                return JSONResponse({"error": "Message required"}, status_code=400)
+            
+            # Simple RAG chat logic
+            # 1. Search memory
+            # Orchestrator does not have 'memory' attribute directly public, 
+            # it has 'memory_manager' or we should access it via property if available.
+            # Looking at orchestrator.py, it's self.memory = MemoryManager(settings)
+            
+            # Check if memory is initialized
+            if not hasattr(mcp._orchestrator, 'memory'):
+                return JSONResponse({"error": "Memory system not initialized"}, status_code=500)
+
+            mem_results = await mcp._orchestrator.memory.search_knowledge(message, limit=3)
+            context = "\n".join([f"- {r.content}" for r in mem_results])
+            
+            # 2. Call LLM (using the analyst model for Q&A)
+            # Use 'analyst' agent's LLM via provider
+            model = mcp._orchestrator.llm_provider.get_model_for_agent("analyst")
+            response = await model.ainvoke(f"Context:\n{context}\n\nUser Question: {message}\n\nAnswer:")
+            
+            return JSONResponse({"response": response.content})
+        except Exception as e:
+            logger.error("api_chat_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     @mcp.custom_route("/health", methods=["GET"])
     async def health_check(request: Request) -> JSONResponse:

@@ -79,11 +79,16 @@ def create_memory_tools(memory_manager: MemoryManager) -> list:
         Returns:
             List of relevant memory items
         """
+        try:
+            uuid_obj = UUID(task_id)
+        except ValueError:
+            return [{"error": f"Invalid task_id format: {task_id}"}]
+
         types = [MemoryType(t) for t in (memory_types or ["episodic", "semantic"])]
 
         memory_query = MemoryQuery(
             query_text=query,
-            task_id=UUID(task_id),
+            task_id=uuid_obj,
             memory_types=types,
             limit=limit,
         )
@@ -118,7 +123,12 @@ def create_memory_tools(memory_manager: MemoryManager) -> list:
         Returns:
             List of audit entries in chronological order
         """
-        entries = await memory_manager.get_audit_log(UUID(task_id), limit)
+        try:
+            uuid_obj = UUID(task_id)
+        except ValueError:
+            return [{"error": f"Invalid task_id format: {task_id}"}]
+
+        entries = await memory_manager.get_audit_log(uuid_obj, limit)
         return [
             {
                 "event_type": e.event_type.value,
@@ -151,7 +161,12 @@ def create_memory_tools(memory_manager: MemoryManager) -> list:
         """
         # Note: This uses the procedural backend's graph capabilities
         # The artifact_id is used to find the associated task
-        artifact = await memory_manager.semantic.retrieve(UUID(artifact_id))
+        try:
+            uuid_obj = UUID(artifact_id)
+        except ValueError:
+            return {"nodes": [], "relationships": [], "error": f"Invalid artifact_id format: {artifact_id}"}
+
+        artifact = await memory_manager.semantic.retrieve(uuid_obj)
         if artifact is None:
             return {"nodes": [], "relationships": [], "error": "Artifact not found"}
 
@@ -204,8 +219,17 @@ def create_action_tools(action_executor) -> list:
         Returns:
             Result of the action execution
         """
+        try:
+            uuid_obj = UUID(task_id)
+        except ValueError:
+            return {
+                "success": False,
+                "error": f"Invalid task_id format: {task_id}",
+                "output": None
+            }
+
         request = ActionRequest(
-            task_id=UUID(task_id),
+            task_id=uuid_obj,
             capability_name=capability_name,
             parameters=parameters,
             input_data=input_data,

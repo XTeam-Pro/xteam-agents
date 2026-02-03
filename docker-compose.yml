@@ -11,10 +11,13 @@ services:
       # Entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.bolt.address=:7687"
       # HTTP to HTTPS redirect
       - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      # Redis Entrypoint
+      - "--entrypoints.redis.address=:6379"
       # Docker provider
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
@@ -26,6 +29,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "7687:7687"
+      - "6379:6379"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certificates:/letsencrypt
@@ -130,6 +135,12 @@ services:
     container_name: xteam-redis
     expose:
       - "6379"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.redis.rule=HostSNI(`redis.${DOMAIN:-example.com}`)"
+      - "traefik.tcp.routers.redis.entrypoints=redis"
+      - "traefik.tcp.routers.redis.tls.certresolver=letsencrypt"
+      - "traefik.tcp.services.redis.loadbalancer.server.port=6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -181,12 +192,20 @@ services:
       - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-xteam_password}
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_server_bolt_advertised__address=neo4j.${DOMAIN:-example.com}:443
+      - NEO4J_server_default__advertised__address=neo4j.${DOMAIN:-example.com}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.neo4j.rule=Host(`neo4j.${DOMAIN:-example.com}`)"
       - "traefik.http.routers.neo4j.entrypoints=websecure"
       - "traefik.http.routers.neo4j.tls.certresolver=letsencrypt"
       - "traefik.http.services.neo4j.loadbalancer.server.port=7474"
+      
+      # Bolt router (for WebSocket connection)
+      - "traefik.tcp.routers.neo4j-bolt.rule=HostSNI(`neo4j.${DOMAIN:-example.com}`)"
+      - "traefik.tcp.routers.neo4j-bolt.entrypoints=bolt"
+      - "traefik.tcp.routers.neo4j-bolt.tls.certresolver=letsencrypt"
+      - "traefik.tcp.services.neo4j-bolt.loadbalancer.server.port=7687"
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
