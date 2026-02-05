@@ -58,7 +58,11 @@ async def run_simple_task_example():
         print("\n🚀 Executing task...")
         start_time = datetime.now()
 
-        result = await graph.ainvoke(task)
+        # Invoke with increased recursion limit
+        result = await graph.ainvoke(
+            task,
+            config={"recursion_limit": 50}
+        )
 
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
@@ -141,7 +145,11 @@ async def run_complex_task_example():
         print("\n🚀 Executing task...")
         start_time = datetime.now()
 
-        result = await graph.ainvoke(task)
+        # Invoke with increased recursion limit
+        result = await graph.ainvoke(
+            task,
+            config={"recursion_limit": 50}
+        )
 
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()

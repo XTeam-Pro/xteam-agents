@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for XTeam Agents MCP Server
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY src/ src/
 RUN uv pip install --system -e ".[dev]"
 
 # Runtime stage
-FROM python:3.11-slim as runtime
+FROM python:3.11-slim AS runtime
 
 WORKDIR /app
 

@@ -222,11 +222,222 @@ ensuring knowledge quality and consistency.
             logger.error("api_chat_error", error=str(e))
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    # --- Task API ---
+    @mcp.custom_route("/api/tasks", methods=["GET"])
+    async def list_tasks_endpoint(request: Request) -> JSONResponse:
+        """List all tasks."""
+        try:
+            # Get tasks from PostgreSQL via orchestrator
+            import asyncpg
+            conn_str = mcp._settings.postgres_url
+            conn = await asyncpg.connect(conn_str)
+
+            rows = await conn.fetch("""
+                SELECT task_id, description, status, priority, created_at, updated_at
+                FROM tasks
+                ORDER BY created_at DESC
+                LIMIT 100
+            """)
+
+            await conn.close()
+
+            tasks = [dict(row) for row in rows]
+            return JSONResponse({"tasks": tasks})
+        except Exception as e:
+            logger.error("api_list_tasks_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/tasks/{task_id}", methods=["GET"])
+    async def get_task_endpoint(request: Request) -> JSONResponse:
+        """Get task details including execution history."""
+        try:
+            task_id = request.path_params["task_id"]
+
+            import asyncpg
+            conn_str = mcp._settings.postgres_url
+            conn = await asyncpg.connect(conn_str)
+
+            # Get task info
+            task_row = await conn.fetchrow("""
+                SELECT task_id, description, status, priority, created_at, updated_at, result
+                FROM tasks
+                WHERE task_id = $1
+            """, task_id)
+
+            if not task_row:
+                await conn.close()
+                return JSONResponse({"error": "Task not found"}, status_code=404)
+
+            # Get audit log for task
+            audit_rows = await conn.fetch("""
+                SELECT timestamp, agent_name, event_type, description, data
+                FROM audit_log
+                WHERE task_id = $1
+                ORDER BY timestamp ASC
+            """, task_id)
+
+            await conn.close()
+
+            task = dict(task_row)
+            task["audit_log"] = [dict(row) for row in audit_rows]
+
+            return JSONResponse({"task": task})
+        except Exception as e:
+            logger.error("api_get_task_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- Agents API ---
+    @mcp.custom_route("/api/agents/status", methods=["GET"])
+    async def get_agents_status_endpoint(request: Request) -> JSONResponse:
+        """Get status of all agents including adversarial team."""
+        try:
+            # Get current active tasks and their states
+            import asyncpg
+            conn_str = mcp._settings.postgres_url
+            conn = await asyncpg.connect(conn_str)
+
+            # Get recent active tasks with their current nodes
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (a.task_id)
+                    a.task_id,
+                    t.description,
+                    t.status as task_status,
+                    a.agent_name,
+                    a.event_type,
+                    a.timestamp,
+                    a.data
+                FROM audit_log a
+                JOIN tasks t ON a.task_id = t.task_id
+                WHERE a.event_type IN ('node_entered', 'node_exited')
+                    AND t.status IN ('analyzing', 'planning', 'executing', 'validating', 'committing')
+                ORDER BY a.task_id, a.timestamp DESC
+            """)
+
+            await conn.close()
+
+            # Structure: cognitive agents + adversarial team
+            cognitive_agents = {
+                "analyze": {"status": "idle", "task_id": None},
+                "plan": {"status": "idle", "task_id": None},
+                "execute": {"status": "idle", "task_id": None},
+                "validate": {"status": "idle", "task_id": None},
+                "commit": {"status": "idle", "task_id": None},
+                "reflect": {"status": "idle", "task_id": None},
+            }
+
+            adversarial_agents = {
+                "orchestrator": {"status": "idle", "task_id": None},
+                "tech_lead": {"status": "idle", "task_id": None, "critic": "idle"},
+                "architect": {"status": "idle", "task_id": None, "critic": "idle"},
+                "backend": {"status": "idle", "task_id": None, "critic": "idle"},
+                "frontend": {"status": "idle", "task_id": None, "critic": "idle"},
+                "data": {"status": "idle", "task_id": None, "critic": "idle"},
+                "devops": {"status": "idle", "task_id": None, "critic": "idle"},
+                "qa": {"status": "idle", "task_id": None, "critic": "idle"},
+                "ai_architect": {"status": "idle", "task_id": None, "critic": "idle"},
+                "security": {"status": "idle", "task_id": None, "critic": "idle"},
+                "performance": {"status": "idle", "task_id": None, "critic": "idle"},
+            }
+
+            # Update status based on audit log
+            for row in rows:
+                agent_name = row["agent_name"]
+                if agent_name in cognitive_agents:
+                    status = "active" if row["event_type"] == "node_entered" else "idle"
+                    cognitive_agents[agent_name] = {
+                        "status": status,
+                        "task_id": str(row["task_id"]),
+                        "timestamp": row["timestamp"].isoformat(),
+                    }
+
+            return JSONResponse({
+                "cognitive_agents": cognitive_agents,
+                "adversarial_agents": adversarial_agents,
+                "total_agents": len(cognitive_agents) + len(adversarial_agents),
+            })
+        except Exception as e:
+            logger.error("api_agents_status_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- Metrics API ---
+    @mcp.custom_route("/api/metrics/quality", methods=["GET"])
+    async def get_quality_metrics_endpoint(request: Request) -> JSONResponse:
+        """Get quality metrics and 5D scoring data."""
+        try:
+            task_id = request.query_params.get("task_id")
+
+            import asyncpg
+            conn_str = mcp._settings.postgres_url
+            conn = await asyncpg.connect(conn_str)
+
+            if task_id:
+                # Get quality scores for specific task
+                rows = await conn.fetch("""
+                    SELECT timestamp, agent_name, data
+                    FROM audit_log
+                    WHERE task_id = $1
+                        AND event_type = 'quality_score'
+                    ORDER BY timestamp DESC
+                """, task_id)
+            else:
+                # Get recent quality scores across all tasks
+                rows = await conn.fetch("""
+                    SELECT task_id, timestamp, agent_name, data
+                    FROM audit_log
+                    WHERE event_type = 'quality_score'
+                    ORDER BY timestamp DESC
+                    LIMIT 50
+                """)
+
+            await conn.close()
+
+            # Parse quality scores
+            quality_data = []
+            for row in rows:
+                data = row["data"] or {}
+                if "quality_scores" in data:
+                    quality_data.append({
+                        "task_id": str(row.get("task_id", "")),
+                        "timestamp": row["timestamp"].isoformat(),
+                        "agent": row["agent_name"],
+                        "scores": data["quality_scores"],
+                    })
+
+            # Calculate aggregate stats
+            if quality_data:
+                # Average scores across all dimensions
+                avg_scores = {
+                    "correctness": 0,
+                    "completeness": 0,
+                    "efficiency": 0,
+                    "maintainability": 0,
+                    "security": 0,
+                }
+
+                for item in quality_data:
+                    scores = item["scores"]
+                    for dim in avg_scores:
+                        avg_scores[dim] += scores.get(dim, 0)
+
+                count = len(quality_data)
+                avg_scores = {k: v / count for k, v in avg_scores.items()}
+            else:
+                avg_scores = None
+
+            return JSONResponse({
+                "quality_data": quality_data,
+                "average_scores": avg_scores,
+                "total_evaluations": len(quality_data),
+            })
+        except Exception as e:
+            logger.error("api_quality_metrics_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     @mcp.custom_route("/health", methods=["GET"])
     async def health_check(request: Request) -> JSONResponse:
         """Health check endpoint."""
         return JSONResponse({
-            "status": "ok", 
+            "status": "ok",
             "service": "xteam-agents",
             "version": "0.1.0"
         })

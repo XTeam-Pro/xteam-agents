@@ -110,7 +110,18 @@ def load_lottie_url(url: str):
 st.sidebar.title("🤖 XTeam Agents")
 st.sidebar.info("Cognitive Operating System Monitor")
 
-page = st.sidebar.radio("Navigation", ["Overview", "Live Agents", "Chat", "Tasks", "Workspace", "Brain Inspector", "Knowledge Graph", "Audit Log"])
+page = st.sidebar.radio("Navigation", [
+    "Overview",
+    "Live Agents",
+    "Adversarial Team",
+    "Quality Metrics",
+    "Chat",
+    "Tasks",
+    "Workspace",
+    "Brain Inspector",
+    "Knowledge Graph",
+    "Audit Log"
+])
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Actions")
@@ -586,12 +597,298 @@ def show_knowledge_graph():
 
 def show_audit_log():
     st.title("System Audit Log")
-    
+
     conn = get_db_connection()
     query = "SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT 100"
     df = pd.read_sql_query(query, conn)
-    
+
     st.dataframe(df)
+
+def show_adversarial_team():
+    st.title("🤺 Adversarial Agent Team")
+    st.info("21 AI Agents working together: 1 Orchestrator + 10 Agent-Critic Pairs")
+
+    try:
+        # Get agents status
+        res = requests.get(f"{MCP_SERVER_URL}/api/agents/status")
+        if res.status_code == 200:
+            data = res.json()
+            adversarial_agents = data.get("adversarial_agents", {})
+
+            # Overview metrics
+            col1, col2, col3 = st.columns(3)
+            active_count = sum(1 for a in adversarial_agents.values() if a.get("status") == "active")
+            col1.metric("Total Agents", len(adversarial_agents))
+            col2.metric("Active Now", active_count)
+            col3.metric("Agent-Critic Pairs", 10)
+
+            st.divider()
+
+            # Orchestrator (Special Agent)
+            st.subheader("🎯 Supreme Orchestrator")
+            orch = adversarial_agents.get("orchestrator", {})
+            status_color = "🟢" if orch.get("status") == "active" else "⚪"
+            st.markdown(f"{status_color} **Status:** {orch.get('status', 'idle').upper()}")
+            if orch.get("task_id"):
+                st.code(f"Working on: {orch['task_id']}")
+            st.caption("Coordinates all agents, classifies tasks, resolves conflicts")
+
+            st.divider()
+
+            # Agent-Critic Pairs
+            st.subheader("⚔️ Agent-Critic Pairs")
+
+            pairs = [
+                ("tech_lead", "TechLead", "Strategic technical leadership", "Normal"),
+                ("architect", "Architect", "System architecture & design", "Normal"),
+                ("backend", "Backend", "Backend & API development", "Normal"),
+                ("frontend", "Frontend", "Frontend & UX implementation", "Normal"),
+                ("data", "Data", "Data engineering & ML", "Normal"),
+                ("devops", "DevOps", "Infrastructure & deployment", "Normal"),
+                ("qa", "QA", "Testing & quality assurance", "Perfectionist 🔍"),
+                ("ai_architect", "AI Architect", "AI/ML architecture", "Normal"),
+                ("security", "Security", "Security (Blue Team)", "Adversarial ⚡"),
+                ("performance", "Performance", "Performance optimization", "Adversarial ⚡"),
+            ]
+
+            # Display in 2 columns
+            for i in range(0, len(pairs), 2):
+                col_left, col_right = st.columns(2)
+
+                for col, pair_idx in [(col_left, i), (col_right, i+1)]:
+                    if pair_idx < len(pairs):
+                        agent_key, name, description, strategy = pairs[pair_idx]
+                        agent_data = adversarial_agents.get(agent_key, {})
+
+                        with col:
+                            with st.container():
+                                status_emoji = "🟢" if agent_data.get("status") == "active" else "⚪"
+                                critic_status_emoji = "🟢" if agent_data.get("critic") == "active" else "⚪"
+
+                                st.markdown(f"### {name}")
+                                st.caption(description)
+                                st.markdown(f"**Strategy:** {strategy}")
+                                st.markdown(f"{status_emoji} Agent | {critic_status_emoji} Critic")
+
+                                if agent_data.get("task_id"):
+                                    st.code(f"Task: {agent_data['task_id'][:8]}...", language="text")
+
+            st.divider()
+
+            # Agent-Critic Debate Visualization
+            st.subheader("💬 Recent Agent-Critic Debates")
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT timestamp, task_id, agent_name, description, data
+                FROM audit_log
+                WHERE event_type IN ('agent_proposal', 'critic_feedback', 'agent_revision')
+                ORDER BY timestamp DESC
+                LIMIT 10
+            """)
+            debates = cur.fetchall()
+
+            if debates:
+                for debate in debates:
+                    timestamp, task_id, agent, desc, data = debate
+
+                    # Color code by event type
+                    if "proposal" in desc.lower():
+                        icon = "💡"
+                        color = "#238636"
+                    elif "feedback" in desc.lower() or "critic" in desc.lower():
+                        icon = "🔍"
+                        color = "#f85149"
+                    else:
+                        icon = "✏️"
+                        color = "#58a6ff"
+
+                    with st.expander(f"{icon} {agent} - {timestamp.strftime('%H:%M:%S')}"):
+                        st.markdown(f"**Task:** `{task_id}`")
+                        st.write(desc)
+                        if data and isinstance(data, dict):
+                            if "quality_scores" in data:
+                                st.json(data["quality_scores"])
+            else:
+                st.info("No recent debates. Adversarial team activates on complex/critical tasks.")
+
+            cur.close()
+
+        else:
+            st.error(f"Failed to fetch agents status: {res.text}")
+
+    except Exception as e:
+        st.error(f"Connection error: {e}")
+
+def show_quality_metrics():
+    st.title("📊 Quality Metrics Dashboard")
+    st.info("5D Quality Scoring: Correctness • Completeness • Efficiency • Maintainability • Security")
+
+    try:
+        # Get quality metrics
+        res = requests.get(f"{MCP_SERVER_URL}/api/metrics/quality")
+        if res.status_code == 200:
+            data = res.json()
+            quality_data = data.get("quality_data", [])
+            avg_scores = data.get("average_scores")
+            total_evals = data.get("total_evaluations", 0)
+
+            # Overview
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Evaluations", total_evals)
+
+            if avg_scores:
+                overall_avg = sum(avg_scores.values()) / len(avg_scores)
+                col2.metric("Overall Quality", f"{overall_avg:.1f}/10")
+
+                # Find best dimension
+                best_dim = max(avg_scores, key=avg_scores.get)
+                col3.metric("Best Dimension", best_dim.capitalize())
+
+                st.divider()
+
+                # 5D Radar Chart
+                st.subheader("🎯 Average 5D Quality Profile")
+
+                # Create radar chart data
+                import plotly.graph_objects as go
+
+                dimensions = ["Correctness", "Completeness", "Efficiency", "Maintainability", "Security"]
+                values = [
+                    avg_scores.get("correctness", 0),
+                    avg_scores.get("completeness", 0),
+                    avg_scores.get("efficiency", 0),
+                    avg_scores.get("maintainability", 0),
+                    avg_scores.get("security", 0),
+                ]
+
+                fig = go.Figure()
+
+                fig.add_trace(go.Scatterpolar(
+                    r=values + [values[0]],  # Close the polygon
+                    theta=dimensions + [dimensions[0]],
+                    fill='toself',
+                    name='Quality Profile',
+                    line=dict(color='#3fb950', width=2),
+                    fillcolor='rgba(63, 185, 80, 0.3)'
+                ))
+
+                # Threshold line (approval threshold = 7.0)
+                threshold_values = [7.0] * (len(dimensions) + 1)
+                fig.add_trace(go.Scatterpolar(
+                    r=threshold_values,
+                    theta=dimensions + [dimensions[0]],
+                    mode='lines',
+                    name='Approval Threshold (7.0)',
+                    line=dict(color='#f85149', width=1, dash='dash')
+                ))
+
+                fig.update_layout(
+                    polar=dict(
+                        bgcolor='#0d1117',
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 10],
+                            gridcolor='#30363d',
+                            tickfont=dict(color='#c9d1d9')
+                        ),
+                        angularaxis=dict(
+                            gridcolor='#30363d',
+                            tickfont=dict(color='#c9d1d9')
+                        )
+                    ),
+                    paper_bgcolor='#0d1117',
+                    plot_bgcolor='#0d1117',
+                    font=dict(color='#c9d1d9'),
+                    showlegend=True,
+                    legend=dict(
+                        bgcolor='#161b22',
+                        bordercolor='#30363d',
+                        borderwidth=1
+                    )
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+                st.divider()
+
+                # Dimension Breakdown
+                st.subheader("📈 Quality Dimensions Breakdown")
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    # Bar chart
+                    import plotly.express as px
+                    df_scores = pd.DataFrame({
+                        'Dimension': dimensions,
+                        'Score': values
+                    })
+
+                    fig_bar = px.bar(
+                        df_scores,
+                        x='Dimension',
+                        y='Score',
+                        color='Score',
+                        color_continuous_scale=['#f85149', '#ffa657', '#3fb950'],
+                        range_color=[0, 10]
+                    )
+                    fig_bar.update_layout(
+                        paper_bgcolor='#0d1117',
+                        plot_bgcolor='#0d1117',
+                        font=dict(color='#c9d1d9'),
+                        yaxis=dict(range=[0, 10])
+                    )
+                    st.plotly_chart(fig_bar, use_container_width=True)
+
+                with col2:
+                    st.write("**Score Interpretation:**")
+                    st.markdown("""
+                    - **9-10**: Excellent ✨
+                    - **7-8**: Good ✅
+                    - **5-6**: Acceptable ⚠️
+                    - **< 5**: Needs Improvement ❌
+
+                    **Approval Threshold:** 7.0
+
+                    Tasks with average score below 7.0 trigger replanning.
+                    """)
+
+                st.divider()
+
+                # Recent Evaluations
+                st.subheader("🕒 Recent Quality Evaluations")
+
+                if quality_data:
+                    for item in quality_data[:10]:  # Show last 10
+                        scores = item["scores"]
+                        avg_score = sum(scores.values()) / len(scores)
+
+                        # Color based on score
+                        if avg_score >= 8:
+                            badge_color = "🟢"
+                        elif avg_score >= 6:
+                            badge_color = "🟡"
+                        else:
+                            badge_color = "🔴"
+
+                        with st.expander(f"{badge_color} Task {item['task_id'][:8]}... | Avg: {avg_score:.1f}/10 | {item['agent']}"):
+                            st.caption(f"Evaluated at: {item['timestamp']}")
+
+                            cols = st.columns(5)
+                            for idx, (dim, score) in enumerate(scores.items()):
+                                with cols[idx]:
+                                    st.metric(dim.capitalize(), f"{score:.1f}")
+                else:
+                    st.info("No quality evaluations recorded yet.")
+            else:
+                st.warning("No quality metrics available. Quality scoring activates when adversarial team is used.")
+        else:
+            st.error(f"Failed to fetch quality metrics: {res.text}")
+
+    except Exception as e:
+        st.error(f"Connection error: {e}")
 
 # --- Routing ---
 
@@ -599,6 +896,10 @@ if page == "Overview":
     show_overview()
 elif page == "Live Agents":
     show_live_agents()
+elif page == "Adversarial Team":
+    show_adversarial_team()
+elif page == "Quality Metrics":
+    show_quality_metrics()
 elif page == "Chat":
     show_chat()
 elif page == "Tasks":

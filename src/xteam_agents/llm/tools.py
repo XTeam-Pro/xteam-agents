@@ -200,8 +200,8 @@ def create_action_tools(action_executor) -> list:
     @tool
     async def execute_action(
         capability_name: str,
-        parameters: dict[str, Any],
         task_id: str,
+        parameters: dict[str, Any] | None = None,
         input_data: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -211,13 +211,20 @@ def create_action_tools(action_executor) -> list:
         or executing shell commands.
 
         Args:
-            capability_name: Name of the capability to execute
-            parameters: Parameters for the capability
+            capability_name: Name of the capability to execute (e.g., 'shell_execute', 'execute_python')
             task_id: UUID of the current task
+            parameters: Optional parameters for the capability (e.g., {'command': 'ls -la'})
             input_data: Optional input data for the action
 
         Returns:
             Result of the action execution
+
+        Examples:
+            # Execute shell command:
+            execute_action(capability_name="shell_execute", task_id="...", parameters={"command": "ls -la"})
+
+            # Execute Python code:
+            execute_action(capability_name="execute_python", task_id="...", parameters={"code": "print('hello')"})
         """
         try:
             uuid_obj = UUID(task_id)
@@ -227,6 +234,10 @@ def create_action_tools(action_executor) -> list:
                 "error": f"Invalid task_id format: {task_id}",
                 "output": None
             }
+
+        # Default to empty dict if parameters not provided
+        if parameters is None:
+            parameters = {}
 
         request = ActionRequest(
             task_id=uuid_obj,

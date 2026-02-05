@@ -131,7 +131,9 @@ def build_cognitive_graph(
 
     logger.info("cognitive_graph_built")
 
-    return graph
+    # Compile the graph
+    # Note: recursion_limit should be passed in config when invoking
+    return graph.compile()
 
 
 def _fail_handler_node(memory_manager: MemoryManager):

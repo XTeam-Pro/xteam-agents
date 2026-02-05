@@ -57,17 +57,19 @@ services:
       dockerfile: Dockerfile
     container_name: xteam-dashboard
     restart: unless-stopped
-    ports:
-      - "8501:8501"
+    expose:
+      - "8501"
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-xteam_password}
       - NEO4J_URL=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-xteam_password}
+      - MCP_SERVER_URL=http://mcp-server:8000
     depends_on:
       - postgres
       - neo4j
+      - mcp-server
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`dashboard.${DOMAIN:-example.com}`)"
@@ -137,9 +139,10 @@ services:
       - "6379"
     labels:
       - "traefik.enable=true"
-      - "traefik.tcp.routers.redis.rule=HostSNI(`redis.${DOMAIN:-example.com}`)"
+      # Allow any TCP traffic on the redis entrypoint (port 6379)
+      - "traefik.tcp.routers.redis.rule=HostSNI(`*`)"
       - "traefik.tcp.routers.redis.entrypoints=redis"
-      - "traefik.tcp.routers.redis.tls.certresolver=letsencrypt"
+      # Route to the internal redis service
       - "traefik.tcp.services.redis.loadbalancer.server.port=6379"
     volumes:
       - redis-data:/data
