@@ -228,6 +228,88 @@ Cognitive OS (analyze → plan → execute → validate → commit)
 - `src/xteam_agents/agents/nodes/pairs/*.py` - All 10 agent-critic pairs
 - `examples/integrated_execution.py` - Working example of both modes
 
+### Research Team: Scientific & Educational Innovation
+
+**NEW**: Научно-исследовательская команда для разработки образовательных датасетов, нейронных моделей и инновационных методик обучения.
+
+**Состав команды (14+ агентов):**
+
+1. **Scientists (Ученые)** - 5 агентов:
+   - **Chief Scientist**: Координатор исследований, формирование стратегии
+   - **Data Scientist**: Датасеты, статистика, Learning Analytics
+   - **ML Researcher**: Нейронные архитектуры, Knowledge Tracing, GNN
+   - **Cognitive Scientist**: Когнитивные процессы, memory, attention, cognitive load
+   - **Pedagogical Researcher**: Instructional design, scaffolding, assessment
+
+2. **Methodologists (Методисты)** - 4 агента:
+   - **Lead Methodologist**: Руководство методической работой
+   - **Curriculum Designer**: Knowledge graph curriculum, learning pathways
+   - **Assessment Designer**: Формативное/суммативное оценивание
+   - **Adaptive Learning Specialist**: Персонализация, адаптивные алгоритмы
+
+3. **Content Team (Контент)** - 5 агентов:
+   - **Content Architect**: Архитектура образовательного контента
+   - **Subject Matter Expert (Math)**: Экспертиза по математике
+   - **Subject Matter Expert (Science)**: Экспертиза по естественным наукам
+   - **Dataset Engineer**: Инженерия датасетов, ETL, validation pipelines
+   - **Annotation Specialist**: Управление аннотацией данных
+
+4. **Critics (Рецензенты)**: По одному критику на каждого агента для peer review
+
+**Типы исследовательских задач:**
+- Dataset Design/Collection/Annotation
+- Model Architecture/Training/Evaluation
+- Curriculum Design, Assessment Design
+- Learning Analytics, A/B Testing
+- Cognitive Analysis, Pedagogical Strategy
+
+**Workflow:**
+```
+START → classify → Chief Scientist (strategy)
+         ↓
+    [Specialists work in sequence/parallel]
+    Data Scientist → ML Researcher → Cognitive Scientist
+    → Pedagogical Researcher → Curriculum Designer → Dataset Engineer
+         ↓
+    Peer Review (Critics)
+         ↓
+    Integration (Final report + deliverables)
+         ↓
+    Delivery Package → Dev Team
+```
+
+**Результаты работы:**
+- Research reports and findings
+- Dataset specifications and implementations
+- Neural architecture designs
+- Curriculum structures (Neo4j graphs)
+- Implementation tasks для development team
+- Quality-assured artifacts (peer-reviewed)
+
+**Integration:**
+```python
+from xteam_agents.integration.research_adapter import ResearchTeamAdapter
+
+adapter = ResearchTeamAdapter(llm_provider, memory_manager)
+result = await adapter.invoke_research_team(
+    research_question="Разработать датасет для адаптивного обучения",
+    task_type=ResearchTaskType.DATASET_DESIGN,
+    complexity=ResearchComplexity.COMPLEX,
+    objectives=["Цель 1", "Цель 2"],
+)
+```
+
+**Key Files:**
+- `src/xteam_agents/agents/research_team/` - Research team implementation
+- `src/xteam_agents/agents/research_team/research_graph.py` - LangGraph coordination
+- `src/xteam_agents/agents/research_team/research_state.py` - State management
+- `src/xteam_agents/agents/research_team/nodes/scientists/` - Scientist agents
+- `src/xteam_agents/agents/research_team/nodes/methodologists/` - Methodologist agents
+- `src/xteam_agents/agents/research_team/nodes/content_team/` - Content team agents
+- `src/xteam_agents/integration/research_adapter.py` - Integration adapter
+- `examples/research_team_usage.py` - Usage examples
+- `docs/RESEARCH_TEAM.md` - Detailed documentation
+
 ### LangGraph State Flow
 
 The cognitive graph is built using LangGraph's `StateGraph`:
