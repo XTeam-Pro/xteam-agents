@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## What's New
+
+This version includes two major new systems:
+
+1. **MAGIC System** (Metacognitive Awareness, Adaptive Learning, Generative Collaboration, Intelligent Escalation, Continuous Evolution)
+   - Optional human-AI collaboration at every pipeline stage
+   - Intelligent escalation based on confidence and autonomy levels
+   - Feedback capture and guideline learning
+   - Progressive autonomy adjustments
+   - 100% backward compatible - zero overhead when disabled
+
+2. **QA Automation System**
+   - Multi-agent powered QA orchestration
+   - User story generation and analysis
+   - Automated testing across 6 domains (E2E, API, Visual, Performance, Security, A11y)
+   - Progress tracking with coverage matrix
+   - Integration with Streamlit dashboard
+   - CI/CD ready with GitHub Actions support
+
+Both systems integrate seamlessly with the existing Cognitive OS and Adversarial Team architecture.
+
 ## Development Commands
 
 ### Setup and Installation
@@ -70,6 +91,12 @@ pytest tests/integration/
 
 # Run only unit tests
 pytest tests/unit/
+
+# Run MAGIC system tests (includes backward compatibility)
+pytest tests/unit/test_magic.py -v
+
+# Run with MAGIC enabled
+MAGIC_ENABLED=true pytest tests/unit/test_magic.py -v
 ```
 
 ### Code Quality
@@ -236,14 +263,23 @@ The cognitive graph is built using LangGraph's `StateGraph`:
 
 **Entry Point**: `src/xteam_agents/server/app.py`
 
-Uses FastMCP to expose three tool categories:
+Uses FastMCP to expose four tool categories:
 1. **Task Tools** (`server/tools/task_tools.py`) - submit_task, get_task_status, cancel_task, list_tasks
 2. **Memory Tools** (`server/tools/memory_tools.py`) - query_memory, search_knowledge, get_knowledge_graph
 3. **Admin Tools** (`server/tools/admin_tools.py`) - system_health, register_capability, list_agents
+4. **MAGIC Tools** (`server/tools/magic_tools.py`) - configure_magic, respond_to_escalation, list_pending_escalations, submit_feedback, get_confidence_scores, get_magic_session, get_evolution_metrics
 
 **Transport Modes:**
 - STDIO: Default, for Claude Desktop integration
 - HTTP: Development mode with `--http` flag
+
+**REST API Endpoints** (in addition to MCP tools):
+- `GET /api/magic/escalations` - List pending escalations
+- `POST /api/magic/escalations/{id}/respond` - Respond to escalation
+- `GET /api/magic/sessions` - List active sessions
+- `POST /api/magic/feedback` - Submit feedback
+- `GET /api/magic/confidence/{task_id}` - Get confidence scores
+- `GET /api/magic/evolution` - Get evolution metrics
 
 ### Task Orchestration
 
@@ -253,6 +289,109 @@ Uses FastMCP to expose three tool categories:
 - Background async execution
 - Task state persisted in Redis during execution
 - Final artifacts stored in Qdrant/Neo4j after validation
+
+### MAGIC System: Human-AI Collaboration
+
+**NEW**: The system now includes the MAGIC (Metacognitive Awareness, Adaptive Learning, Generative Collaboration, Intelligent Escalation, Continuous Evolution) system for optional human-AI collaboration at every pipeline stage.
+
+**Key Features:**
+- **Optional Overlay**: Zero overhead when disabled (`MAGIC_ENABLED=false`)
+- **5 Autonomy Levels**: SUPERVISED → GUIDED → COLLABORATIVE (default) → AUTONOMOUS → TRUSTED
+- **Intelligent Escalation**: Routes to humans based on confidence and autonomy level
+- **Confidence Scoring**: Multi-dimensional assessment (factual_accuracy, completeness, relevance, coherence, novelty_risk)
+- **Human Checkpoints**: 4 available stages (after_analyze, after_plan, after_execute, after_validate)
+- **Feedback Learning**: Converts human feedback to persistent guidelines
+- **Evolution Metrics**: Tracks escalation rate, approval rate, autonomy progression
+
+**Architecture:**
+```
+Pipeline Flow with MAGIC Checkpoints:
+analyze → [checkpoint_after_analyze?] → plan → [checkpoint_after_plan?]
+  → execute → [checkpoint_after_execute?] → validate → [checkpoint_after_validate?] → commit
+```
+
+**Key Files:**
+- `src/xteam_agents/magic/core.py` - MAGICCore coordinator
+- `src/xteam_agents/magic/metacognition.py` - Confidence assessment engine
+- `src/xteam_agents/magic/escalation.py` - Escalation routing logic
+- `src/xteam_agents/magic/session.py` - Collaborative session management
+- `src/xteam_agents/magic/feedback.py` - Feedback collection and guideline generation
+- `src/xteam_agents/magic/evolution.py` - Progressive autonomy adjustments
+- `src/xteam_agents/graph/nodes/human_checkpoint.py` - Checkpoint nodes
+- `src/xteam_agents/models/magic.py` - All MAGIC data models
+
+**Configuration:**
+```bash
+MAGIC_ENABLED=true|false              # Enable/disable MAGIC system
+MAGIC_DEFAULT_AUTONOMY=collaborative  # Default autonomy level
+MAGIC_DEFAULT_CONFIDENCE_THRESHOLD=0.6  # Escalation threshold
+MAGIC_DEFAULT_ESCALATION_TIMEOUT=300  # Human response timeout (seconds)
+MAGIC_DEFAULT_FALLBACK=continue       # Fallback policy on timeout
+MAGIC_DEFAULT_CHECKPOINTS=""          # Default checkpoints
+MAGIC_WEBHOOK_URL=""                  # Optional notification webhook
+```
+
+**Per-Task Configuration:**
+```json
+{
+  "description": "Task description",
+  "magic": {
+    "autonomy_level": "guided",
+    "confidence_threshold": 0.8,
+    "checkpoints": ["after_analyze", "after_plan"],
+    "escalation_timeout": 600
+  }
+}
+```
+
+### QA Automation System
+
+**NEW**: QA Automation orchestration with multiple agent-powered testing phases.
+
+**Architecture:**
+- **User Story Analyst**: Generates user stories with acceptance criteria from system understanding
+- **Test Engineer Agents**: Create test code for E2E, API, visual, performance, security, accessibility
+- **QA Orchestrator**: Coordinates analysis → test_creation → execution → reporting phases
+- **Progress Matrix**: Tracks coverage, pass rates, automation status per feature
+
+**Supported Test Types:**
+- E2E Tests (Puppeteer/Playwright) - Full user workflows
+- API Tests (Jest/Axios) - REST endpoint validation
+- Visual Regression (PixelMatch) - Screenshot comparison
+- Performance Tests (Lighthouse) - Load time and metrics
+- Security Tests (OWASP) - Vulnerability scanning
+- Accessibility Tests (Axe) - A11y compliance
+
+**Key Files:**
+- `qa-automation/src/agents/orchestrator.ts` - QA orchestration orchestrator
+- `qa-automation/src/agents/user-story-analyst.ts` - User story generation
+- `qa-automation/tests/e2e/**/*.spec.ts` - E2E test suites
+- `qa-automation/tests/api/**/*.spec.ts` - API test suites
+- `qa-automation/reports/` - Test results and progress matrix
+
+**Running QA:**
+```bash
+cd qa-automation
+npm install
+
+# Generate user stories
+npm run qa:orchestrate -- --phase=analysis
+
+# Run all tests
+npm run test:all
+
+# Generate report
+npm run qa:orchestrate -- --phase=reporting
+
+# View results
+npm run qa:serve-report
+```
+
+**Dashboard Integration:**
+- New "QA Automation" page in Streamlit dashboard
+- Real-time test result visualization
+- Coverage metrics and pass rates
+- User story tracking with automation status
 
 ## Key Implementation Patterns
 
@@ -283,6 +422,38 @@ Uses FastMCP to expose three tool categories:
 2. Decorate with `@mcp.tool()`
 3. Register in `server/app.py` during server initialization
 4. Tool automatically exposed via MCP protocol
+
+### Configuring MAGIC System per Task
+
+1. When submitting task via MCP, include `magic` metadata:
+```json
+{
+  "description": "Complex task requiring human oversight",
+  "context": {...},
+  "magic": {
+    "autonomy_level": "guided",
+    "confidence_threshold": 0.75,
+    "checkpoints": ["after_analyze", "after_plan"],
+    "escalation_timeout": 600
+  }
+}
+```
+
+2. System will:
+   - Create MAGICTaskConfig from metadata
+   - Place human checkpoints at specified stages
+   - Assess confidence at each node
+   - Escalate to human if confidence < threshold
+   - Track feedback and generate guidelines
+
+### Adding a New MAGIC Subsystem
+
+1. Create module in `src/xteam_agents/magic/your_system.py`
+2. Implement required interface with async methods
+3. Register in `MAGICCore` initialization in `magic/core.py`
+4. Add corresponding MCP tools in `server/tools/magic_tools.py`
+5. Add Pydantic models to `src/xteam_agents/models/magic.py` if needed
+6. Update state schema in `src/xteam_agents/models/state.py`
 
 ## Docker and Traefik Setup
 
@@ -321,28 +492,53 @@ All configuration via environment variables in `.env` file (see `.env.example`):
 - `MAX_RETRIES`: Max retry attempts (default: 3)
 - `MAX_REPLAN_ITERATIONS`: Max replan cycles before failing (default: 3)
 
+**MAGIC System Configuration:**
+- `MAGIC_ENABLED`: Enable/disable human-AI collaboration (default: false)
+- `MAGIC_DEFAULT_AUTONOMY`: Default autonomy level (default: collaborative)
+- `MAGIC_DEFAULT_CONFIDENCE_THRESHOLD`: Escalation threshold 0.0-1.0 (default: 0.6)
+- `MAGIC_DEFAULT_ESCALATION_TIMEOUT`: Human response timeout in seconds (default: 300)
+- `MAGIC_DEFAULT_FALLBACK`: Fallback on timeout - continue|pause|fail (default: continue)
+- `MAGIC_DEFAULT_CHECKPOINTS`: Comma-separated checkpoints to enable (default: empty)
+- `MAGIC_WEBHOOK_URL`: Optional webhook for escalation notifications (default: empty)
+
 Configuration loaded via Pydantic Settings in `src/xteam_agents/config.py`.
 
 ## Important Files for Understanding
 
 **Core Architecture:**
-- `src/xteam_agents/graph/builder.py` - Graph structure and flow
+- `src/xteam_agents/graph/builder.py` - Graph structure and flow (with conditional MAGIC checkpoint edges)
 - `src/xteam_agents/memory/manager.py` - Memory invariants and enforcement
-- `src/xteam_agents/orchestrator.py` - Task lifecycle management
-- `src/xteam_agents/models/state.py` - State schema with reducers
+- `src/xteam_agents/orchestrator.py` - Task lifecycle management, MAGICCore initialization
+- `src/xteam_agents/models/state.py` - State schema with MAGIC fields and reducers
 
 **Agent Nodes:**
-- `src/xteam_agents/graph/nodes/commit.py` - The gatekeeper to shared memory
+- `src/xteam_agents/graph/nodes/commit.py` - The gatekeeper to shared memory, guideline commitment
 - `src/xteam_agents/graph/nodes/validate.py` - Validation decision logic
-- `src/xteam_agents/graph/edges.py` - Routing logic including replan conditions
+- `src/xteam_agents/graph/nodes/human_checkpoint.py` - MAGIC checkpoint nodes at 4 stages
+- `src/xteam_agents/graph/edges.py` - Routing logic including replan conditions and checkpoint branches
+
+**MAGIC System:**
+- `src/xteam_agents/magic/core.py` - MAGICCore central coordinator
+- `src/xteam_agents/magic/metacognition.py` - Confidence assessment with 5 dimensions
+- `src/xteam_agents/magic/escalation.py` - Escalation decision matrix by autonomy level
+- `src/xteam_agents/magic/feedback.py` - Feedback collection and guideline queuing
+- `src/xteam_agents/magic/session.py` - Collaborative session management with async response waiting
+- `src/xteam_agents/magic/evolution.py` - Progressive autonomy adjustments and metrics
+- `src/xteam_agents/models/magic.py` - All MAGIC Pydantic models and enums
 
 **Tool System:**
 - `src/xteam_agents/llm/tools.py` - Tool creation and restrictions
 - `src/xteam_agents/action/executor.py` - Action execution with handlers
 
-**Server:**
-- `src/xteam_agents/server/app.py` - MCP server entry point
+**Server & MCP:**
+- `src/xteam_agents/server/app.py` - MCP server entry point with MAGIC tools registration
+- `src/xteam_agents/server/tools/magic_tools.py` - 7 MAGIC MCP tools
 - `src/xteam_agents/__main__.py` - CLI entry point
+
+**QA Automation:**
+- `qa-automation/src/agents/orchestrator.ts` - QA orchestration phases
+- `qa-automation/src/agents/user-story-analyst.ts` - User story generation
+- `qa-automation/tests/` - Test suite organization by type
 
 ## Common Development Workflows
 
@@ -372,6 +568,7 @@ docker-compose down
       "env": {
         "OPENAI_API_KEY": "...",
         "REDIS_URL": "redis://localhost:6379/0",
+        "MAGIC_ENABLED": "true",
         ...
       }
     }
@@ -379,7 +576,52 @@ docker-compose down
 }
 ```
 3. Restart Claude Desktop
-4. Use MCP tools: `submit_task`, `get_task_status`, etc.
+4. Use MCP tools: `submit_task`, `get_task_status`, MAGIC tools, etc.
+
+### Testing MAGIC System
+
+```bash
+# Test MAGIC components (all backward compatibility tests included)
+pytest tests/unit/test_magic.py -v
+
+# Test with MAGIC enabled in environment
+MAGIC_ENABLED=true pytest tests/unit/test_magic.py
+
+# Test with specific autonomy level
+MAGIC_DEFAULT_AUTONOMY=guided pytest tests/unit/test_magic.py
+
+# Run integration tests with local backends
+docker-compose up -d
+MAGIC_ENABLED=true pytest tests/integration/ -v
+docker-compose down
+```
+
+### Running QA Automation
+
+```bash
+cd qa-automation
+
+# Install dependencies
+npm install
+
+# Generate user stories and analysis
+npm run qa:orchestrate -- --phase=analysis
+
+# Run all test suites
+npm run test:all
+
+# Run only E2E tests
+npm run test:e2e -- --watch
+
+# Run only API tests
+npm run test:api
+
+# Generate reports
+npm run qa:orchestrate -- --phase=reporting
+
+# View Allure report
+npm run qa:serve-report
+```
 
 ### Debugging Graph Execution
 
@@ -415,6 +657,7 @@ Cycle repeats (max 3 times)
 - Test individual components in isolation
 - Mock external dependencies (memory backends, LLM calls)
 - Fast, no external services required
+- `test_magic.py` - Comprehensive MAGIC system unit tests with backward compatibility checks
 
 **Integration Tests** (`tests/integration/`):
 - Test components together with real backends
@@ -426,6 +669,49 @@ Cycle repeats (max 3 times)
 - Test complete task flows through MCP interface
 - Most realistic but slowest
 
+**QA Tests** (`qa-automation/tests/`):
+- E2E tests for Streamlit dashboard (Puppeteer/Playwright)
+- API tests for REST endpoints (Jest/Axios)
+- Visual regression tests (PixelMatch)
+- Performance tests (Lighthouse)
+- Security tests (OWASP vulnerability scanning)
+- Accessibility tests (Axe)
+- Organized by test type with corresponding Jest configs
+
+**MAGIC System Testing:**
+- All MAGIC features tested in `tests/unit/test_magic.py`
+- Backward compatibility verified (zero overhead when disabled)
+- Escalation decision matrix tested across all autonomy levels
+- Feedback-to-guideline conversion tested
+- Async response waiting with timeouts tested
+- Evolution metrics calculation tested
+- Human checkpoint passthrough tested when MAGIC disabled
+
+## Dashboard Features
+
+The Streamlit dashboard includes several pages for monitoring and controlling the system:
+
+**Standard Pages:**
+- **Live Agents** - Real-time agent state with Mission Control header, cognitive graph visualization
+- **Adversarial Team** - 21-agent team status, debates, quality scoring
+- **Quality Metrics** - Task pass rates, resolution times, performance analysis
+- **Tasks** - Task list, status tracking, artifact viewing
+- **Chat** - Real-time communication interface
+- **Workspace** - Custom workspace configuration
+
+**MAGIC Control Page** (when `MAGIC_ENABLED=true`):
+- **Pending Escalations** - Live escalation list with response buttons and confidence scores
+- **Active Sessions** - Real-time collaborative session list with message feeds
+- **Confidence Dashboard** - Radar chart with 5-dimensional breakdown
+- **Feedback & Learning** - Submit feedback, generated guidelines, human preference profiles
+- **Evolution Metrics** - Escalation rate, approval rate, autonomy progression
+
+**QA Dashboard** (in `qa-automation/`):
+- **User Stories** - Progress matrix, coverage tracking
+- **Test Results** - Pass rates, failed test details
+- **Coverage Metrics** - Automated vs manual vs not tested breakdown
+- **Performance Trends** - Test execution times over time
+
 ## Security Considerations
 
 1. **Memory Isolation**: Architecture prevents agents from directly writing to shared memory
@@ -433,3 +719,6 @@ Cycle repeats (max 3 times)
 3. **Audit Trail**: All significant events logged to append-only PostgreSQL audit table
 4. **Validation Gate**: Reviewer must approve before commit_node writes to shared memory
 5. **Timeout Enforcement**: All actions have configurable timeouts to prevent runaway execution
+6. **MAGIC Write Invariant**: Feedback system respects commit_node's exclusive write permission to shared memory
+7. **Escalation Security**: Only valid autonomy levels and confidence thresholds accepted
+8. **Session Expiration**: Collaborative sessions expire after 4 hours (configurable)

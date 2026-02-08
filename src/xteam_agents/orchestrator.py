@@ -47,6 +47,7 @@ class TaskOrchestrator:
         self.perception_engine: PerceptionEngine | None = None
         self.capability_registry: CapabilityRegistry | None = None
         self._graph = None
+        self._magic_core = None  # MAGICCore instance (when MAGIC is enabled)
 
     async def setup(self) -> None:
         """Initialize all components."""
@@ -65,14 +66,22 @@ class TaskOrchestrator:
         self.perception_engine = PerceptionEngine(self.settings)
         await self.perception_engine.setup()
 
+        # Initialize MAGIC if enabled
+        if self.settings.magic_enabled:
+            from xteam_agents.magic.core import MAGICCore
+            self._magic_core = MAGICCore(self.llm_provider, self.memory_manager)
+            logger.info("magic_core_initialized")
+
         # Build the graph
-        graph = build_cognitive_graph(
+        self._graph = build_cognitive_graph(
             self.settings,
             self.llm_provider,
             self.memory_manager,
             self.action_executor,
+            magic_core=self._magic_core,
         )
-        self._graph = compile_graph(graph)
+        # graph is already compiled by build_cognitive_graph
+        # self._graph = compile_graph(graph)
 
         self._initialized = True
         logger.info("orchestrator_setup_complete")
@@ -203,6 +212,46 @@ class TaskOrchestrator:
             # Send Webhook: STARTED
             await self._send_webhook(task_id, "started", {"description": request.description})
 
+            # Create MAGIC config if enabled
+            magic_config = None
+            if self._magic_core and self.settings.magic_enabled:
+                from xteam_agents.models.magic import (
+                    AutonomyLevel,
+                    CheckpointStage,
+                    MAGICTaskConfig,
+                )
+
+                # Parse default checkpoints from settings
+                checkpoint_list = []
+                if self.settings.magic_default_checkpoints:
+                    for cp in self.settings.magic_default_checkpoints.split(","):
+                        cp = cp.strip()
+                        if cp:
+                            try:
+                                checkpoint_list.append(CheckpointStage(cp))
+                            except ValueError:
+                                pass
+
+                magic_config = MAGICTaskConfig(
+                    enabled=True,
+                    autonomy_level=AutonomyLevel(self.settings.magic_default_autonomy),
+                    confidence_threshold=self.settings.magic_default_confidence_threshold,
+                    checkpoints=checkpoint_list,
+                    escalation_timeout=self.settings.magic_default_escalation_timeout,
+                    fallback_on_timeout=self.settings.magic_default_fallback,
+                )
+
+                # Override from request metadata if provided
+                magic_meta = request.context.get("magic", {})
+                if magic_meta.get("autonomy_level"):
+                    magic_config.autonomy_level = AutonomyLevel(magic_meta["autonomy_level"])
+                if magic_meta.get("confidence_threshold") is not None:
+                    magic_config.confidence_threshold = magic_meta["confidence_threshold"]
+                if magic_meta.get("checkpoints"):
+                    magic_config.checkpoints = [
+                        CheckpointStage(cp) for cp in magic_meta["checkpoints"]
+                    ]
+
             # Create initial state
             initial_state = AgentState(
                 task_id=task_id,
@@ -210,6 +259,7 @@ class TaskOrchestrator:
                 context=request.context,
                 priority=request.priority.value,
                 max_iterations=self.settings.max_replan_iterations * 4,  # Allow for replans
+                magic_config=magic_config,
             )
 
             # Store initial state

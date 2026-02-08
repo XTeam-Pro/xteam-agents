@@ -1,5 +1,7 @@
 """Architect agent node."""
 
+from __future__ import annotations
+
 import json
 from typing import Any, Callable
 
@@ -20,6 +22,7 @@ logger = structlog.get_logger()
 def create_plan_node(
     llm_provider: LLMProvider,
     memory_manager: MemoryManager,
+    magic_core: Any | None = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the plan node function.
@@ -174,14 +177,28 @@ IMPORTANT: Format your subtasks as a JSON array like this:
             subtask_count=len(subtasks),
         )
 
-        # Return state updates
-        return {
+        # MAGIC: assess confidence if enabled
+        state_updates: dict[str, Any] = {
             "plan": plan,
             "subtasks": subtasks,
             "current_node": "execute",
             "should_replan": False,  # Reset replan flag
             "messages": state.messages + [AIMessage(content=plan)],
         }
+
+        if magic_core and state.magic_config and state.magic_config.enabled:
+            try:
+                confidence = await magic_core.assess_confidence(
+                    str(state.task_id), "plan", plan, state.description
+                )
+                state_updates["confidence_scores"] = {
+                    **state.confidence_scores,
+                    "plan": confidence.to_dict(),
+                }
+            except Exception as e:
+                logger.warning("magic_confidence_assess_failed", error=str(e))
+
+        return state_updates
 
     return plan_node
 

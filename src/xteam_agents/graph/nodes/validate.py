@@ -1,5 +1,7 @@
 """Reviewer agent node."""
 
+from __future__ import annotations
+
 from typing import Any, Callable
 
 import structlog
@@ -19,6 +21,7 @@ logger = structlog.get_logger()
 def create_validate_node(
     llm_provider: LLMProvider,
     memory_manager: MemoryManager,
+    magic_core: Any | None = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the validate node function.
@@ -225,8 +228,8 @@ FEEDBACK: [Your detailed feedback]
             is_validated=is_validated,
         )
 
-        # Return state updates
-        return {
+        # MAGIC: assess confidence if enabled
+        state_updates: dict[str, Any] = {
             "is_validated": is_validated,
             "validation_feedback": feedback,
             "validation_attempts": state.validation_attempts + 1,
@@ -236,6 +239,23 @@ FEEDBACK: [Your detailed feedback]
             "current_node": "route",  # Will be routed by edge function
             "messages": state.messages + [AIMessage(content=validation_content)],
         }
+
+        if magic_core and state.magic_config and state.magic_config.enabled:
+            try:
+                confidence = await magic_core.assess_confidence(
+                    str(state.task_id),
+                    "validate",
+                    validation_content,
+                    state.description,
+                )
+                state_updates["confidence_scores"] = {
+                    **state.confidence_scores,
+                    "validate": confidence.to_dict(),
+                }
+            except Exception as e:
+                logger.warning("magic_confidence_assess_failed", error=str(e))
+
+        return state_updates
 
     return validate_node
 

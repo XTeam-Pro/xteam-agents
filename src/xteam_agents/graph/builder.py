@@ -1,5 +1,7 @@
 """Build the cognitive LangGraph."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import structlog
@@ -27,6 +29,7 @@ def build_cognitive_graph(
     llm_provider: LLMProvider,
     memory_manager: MemoryManager,
     action_executor: ActionExecutor,
+    magic_core: Any | None = None,
 ) -> StateGraph:
     """
     Build the cognitive LangGraph.
@@ -54,6 +57,7 @@ def build_cognitive_graph(
         llm_provider: LLM provider instance
         memory_manager: Memory manager instance
         action_executor: Action executor instance
+        magic_core: Optional MAGICCore instance for human-AI collaboration
 
     Returns:
         Compiled LangGraph
@@ -73,17 +77,18 @@ def build_cognitive_graph(
     logger.info("adversarial_graph_built")
 
     # Create node functions
-    analyze_node = create_analyze_node(llm_provider, memory_manager)
-    plan_node = create_plan_node(llm_provider, memory_manager)
+    analyze_node = create_analyze_node(llm_provider, memory_manager, magic_core=magic_core)
+    plan_node = create_plan_node(llm_provider, memory_manager, magic_core=magic_core)
     execute_node = create_execute_node(
         llm_provider,
         memory_manager,
         action_executor,
         adversarial_graph,  # ← Pass adversarial graph
         settings,           # ← Pass settings
+        magic_core=magic_core,
     )
-    validate_node = create_validate_node(llm_provider, memory_manager)
-    commit_node = create_commit_node(memory_manager)
+    validate_node = create_validate_node(llm_provider, memory_manager, magic_core=magic_core)
+    commit_node = create_commit_node(memory_manager, magic_core=magic_core)
     reflect_node = create_reflect_node(llm_provider, memory_manager)
 
     # Add nodes to graph
@@ -94,14 +99,42 @@ def build_cognitive_graph(
     graph.add_node("commit", commit_node)
     graph.add_node("reflect", reflect_node)
 
+    # Add MAGIC checkpoint nodes if magic_core is provided
+    if magic_core:
+        from xteam_agents.graph.nodes.human_checkpoint import create_human_checkpoint_node
+        from xteam_agents.models.magic import CheckpointStage
+
+        checkpoint_after_analyze = create_human_checkpoint_node(
+            magic_core, memory_manager, CheckpointStage.AFTER_ANALYZE
+        )
+        checkpoint_after_plan = create_human_checkpoint_node(
+            magic_core, memory_manager, CheckpointStage.AFTER_PLAN
+        )
+        checkpoint_after_execute = create_human_checkpoint_node(
+            magic_core, memory_manager, CheckpointStage.AFTER_EXECUTE
+        )
+
+        graph.add_node("checkpoint_after_analyze", checkpoint_after_analyze)
+        graph.add_node("checkpoint_after_plan", checkpoint_after_plan)
+        graph.add_node("checkpoint_after_execute", checkpoint_after_execute)
+
     # Set entry point
     graph.set_entry_point("analyze")
 
-    # Add edges
-    # Linear flow: analyze → plan → execute → validate
-    graph.add_edge("analyze", "plan")
-    graph.add_edge("plan", "execute")
-    graph.add_edge("execute", "validate")
+    # Add edges - with MAGIC checkpoints inserted when enabled
+    if magic_core:
+        # analyze → checkpoint → plan → checkpoint → execute → checkpoint → validate
+        graph.add_edge("analyze", "checkpoint_after_analyze")
+        graph.add_edge("checkpoint_after_analyze", "plan")
+        graph.add_edge("plan", "checkpoint_after_plan")
+        graph.add_edge("checkpoint_after_plan", "execute")
+        graph.add_edge("execute", "checkpoint_after_execute")
+        graph.add_edge("checkpoint_after_execute", "validate")
+    else:
+        # Linear flow: analyze → plan → execute → validate
+        graph.add_edge("analyze", "plan")
+        graph.add_edge("plan", "execute")
+        graph.add_edge("execute", "validate")
 
     # Conditional routing after validation
     def validate_router(state: AgentState) -> str:

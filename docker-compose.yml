@@ -59,6 +59,9 @@ services:
     restart: unless-stopped
     expose:
       - "8501"
+    volumes:
+      - ./dashboard:/app
+      - /app/__pycache__
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-xteam_password}
@@ -66,6 +69,7 @@ services:
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-xteam_password}
       - MCP_SERVER_URL=http://mcp-server:8000
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
     depends_on:
       - postgres
       - neo4j

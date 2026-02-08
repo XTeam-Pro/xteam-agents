@@ -113,6 +113,15 @@ class AgentState(BaseModel):
     error: str | None = None
     is_failed: bool = False
 
+    # MAGIC (Human-AI Collaboration) - all optional, defaults preserve backward compatibility
+    magic_config: Any | None = None  # MAGICTaskConfig when MAGIC is enabled
+    magic_session_id: UUID | None = None
+    confidence_scores: dict[str, Any] = Field(default_factory=dict)  # node_name -> ConfidenceScore
+    pending_escalation: Any | None = None  # EscalationRequest
+    human_feedback: list[Any] = Field(default_factory=list)  # HumanFeedback items
+    is_human_paused: bool = False
+    human_override: str | None = None
+
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

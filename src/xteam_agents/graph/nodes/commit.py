@@ -1,5 +1,7 @@
 """Commit node - the SINGLE write point to shared memory."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Callable
 
@@ -16,6 +18,7 @@ logger = structlog.get_logger()
 
 def create_commit_node(
     memory_manager: MemoryManager,
+    magic_core: Any | None = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the commit node function.
@@ -144,6 +147,26 @@ def create_commit_node(
                 "is_failed": True,
                 "error": f"Commit failed: {str(e)}",
             }
+
+        # Commit pending MAGIC guidelines (human feedback -> shared memory)
+        if magic_core:
+            try:
+                pending_guidelines = magic_core.get_pending_guidelines()
+                for guideline in pending_guidelines:
+                    await memory_manager.commit_to_shared(
+                        guideline, caller="commit_node"
+                    )
+                    logger.info(
+                        "magic_guideline_committed",
+                        task_id=str(state.task_id),
+                        guideline_id=str(guideline.id),
+                    )
+            except Exception as e:
+                logger.warning(
+                    "magic_guideline_commit_error",
+                    task_id=str(state.task_id),
+                    error=str(e),
+                )
 
         # Log successful commit
         await memory_manager.log_audit(

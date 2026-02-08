@@ -1,5 +1,7 @@
 """Analyst agent node."""
 
+from __future__ import annotations
+
 from typing import Any, Callable
 
 import structlog
@@ -19,6 +21,7 @@ logger = structlog.get_logger()
 def create_analyze_node(
     llm_provider: LLMProvider,
     memory_manager: MemoryManager,
+    magic_core: Any | None = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the analyze node function.
@@ -187,8 +190,8 @@ Provide a comprehensive analysis covering:
             analysis_length=len(analysis),
         )
 
-        # Return state updates
-        return {
+        # MAGIC: assess confidence if enabled
+        state_updates: dict[str, Any] = {
             "analysis": analysis,
             "current_node": "plan",
             "messages": state.messages + [AIMessage(content=analysis)],
@@ -197,6 +200,20 @@ Provide a comprehensive analysis covering:
                 "complexity": complexity,
             },
         }
+
+        if magic_core and state.magic_config and state.magic_config.enabled:
+            try:
+                confidence = await magic_core.assess_confidence(
+                    str(state.task_id), "analyze", analysis, state.description
+                )
+                state_updates["confidence_scores"] = {
+                    **state.confidence_scores,
+                    "analyze": confidence.to_dict(),
+                }
+            except Exception as e:
+                logger.warning("magic_confidence_assess_failed", error=str(e))
+
+        return state_updates
 
     return analyze_node
 

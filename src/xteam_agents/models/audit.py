@@ -43,6 +43,16 @@ class AuditEventType(str, Enum):
     CAPABILITY_REGISTERED = "capability_registered"
     CONFIG_CHANGED = "config_changed"
 
+    # MAGIC (Human-AI Collaboration) events
+    HUMAN_ESCALATION_CREATED = "human_escalation_created"
+    HUMAN_ESCALATION_RESOLVED = "human_escalation_resolved"
+    HUMAN_ESCALATION_TIMEOUT = "human_escalation_timeout"
+    HUMAN_FEEDBACK_RECEIVED = "human_feedback_received"
+    HUMAN_SESSION_STARTED = "human_session_started"
+    HUMAN_SESSION_ENDED = "human_session_ended"
+    CONFIDENCE_ASSESSED = "confidence_assessed"
+    AUTONOMY_ADJUSTED = "autonomy_adjusted"
+
 
 class AuditEntry(BaseModel):
     """

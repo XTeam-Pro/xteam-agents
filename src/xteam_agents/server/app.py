@@ -8,6 +8,7 @@ from xteam_agents.orchestrator import TaskOrchestrator
 from xteam_agents.server.tools.admin_tools import register_admin_tools
 from xteam_agents.server.tools.code_tools import register_code_tools
 from xteam_agents.server.tools.filesystem_tools import register_filesystem_tools
+from xteam_agents.server.tools.magic_tools import register_magic_tools
 from xteam_agents.server.tools.memory_tools import register_memory_tools
 from xteam_agents.server.tools.task_tools import register_task_tools
 from xteam_agents.server.tools.web_tools import register_web_tools
@@ -92,6 +93,7 @@ ensuring knowledge quality and consistency.
     register_code_tools(mcp, orchestrator)
     register_web_tools(mcp, orchestrator)
     register_filesystem_tools(mcp, orchestrator)
+    register_magic_tools(mcp, orchestrator)
 
     # Add health check endpoint
     from starlette.requests import Request
@@ -431,6 +433,195 @@ ensuring knowledge quality and consistency.
             })
         except Exception as e:
             logger.error("api_quality_metrics_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # --- MAGIC API ---
+    @mcp.custom_route("/api/magic/escalations", methods=["GET"])
+    async def list_magic_escalations(request: Request) -> JSONResponse:
+        """List pending MAGIC escalations."""
+        try:
+            magic_core = getattr(mcp._orchestrator, "_magic_core", None)
+            if not magic_core:
+                return JSONResponse({"escalations": [], "count": 0, "magic_enabled": False})
+
+            task_id = request.query_params.get("task_id")
+            from uuid import UUID as _UUID
+            tid = _UUID(task_id) if task_id else None
+            pending = magic_core.escalation_router.get_pending_escalations(tid)
+
+            return JSONResponse({
+                "escalations": [
+                    {
+                        "id": str(e.id),
+                        "task_id": str(e.task_id),
+                        "reason": e.reason.value,
+                        "priority": e.priority.value,
+                        "stage": e.stage.value,
+                        "question": e.question,
+                        "options": e.options,
+                        "default_action": e.default_action,
+                        "created_at": e.created_at.isoformat(),
+                        "confidence": e.confidence_score.to_dict() if e.confidence_score else None,
+                    }
+                    for e in pending
+                ],
+                "count": len(pending),
+                "magic_enabled": True,
+            })
+        except Exception as e:
+            logger.error("api_magic_escalations_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/magic/escalations/{escalation_id}/respond", methods=["POST"])
+    async def respond_magic_escalation(request: Request) -> JSONResponse:
+        """Respond to a MAGIC escalation."""
+        try:
+            magic_core = getattr(mcp._orchestrator, "_magic_core", None)
+            if not magic_core:
+                return JSONResponse({"error": "MAGIC not enabled"}, status_code=400)
+
+            escalation_id = request.path_params["escalation_id"]
+            body = await request.json()
+
+            from uuid import UUID as _UUID
+            from xteam_agents.models.magic import HumanResponse, HumanResponseType
+
+            esc_uuid = _UUID(escalation_id)
+            response = HumanResponse(
+                escalation_id=esc_uuid,
+                response_type=HumanResponseType(body.get("response_type", "approval")),
+                content=body.get("content", ""),
+                data=body.get("data", {}),
+                human_id=body.get("human_id", "dashboard"),
+            )
+
+            # Find task_id
+            pending = magic_core.escalation_router.get_pending_escalations()
+            task_id = None
+            for esc in pending:
+                if esc.id == esc_uuid:
+                    task_id = esc.task_id
+                    break
+
+            if task_id:
+                await magic_core.submit_response(esc_uuid, response, task_id)
+
+            return JSONResponse({"status": "submitted", "escalation_id": escalation_id})
+        except Exception as e:
+            logger.error("api_magic_respond_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/magic/sessions", methods=["GET"])
+    async def list_magic_sessions(request: Request) -> JSONResponse:
+        """List active MAGIC collaborative sessions."""
+        try:
+            magic_core = getattr(mcp._orchestrator, "_magic_core", None)
+            if not magic_core:
+                return JSONResponse({"sessions": [], "magic_enabled": False})
+
+            sessions = magic_core.session_manager.list_active_sessions()
+            return JSONResponse({
+                "sessions": [
+                    {
+                        "id": str(s.id),
+                        "task_id": str(s.task_id),
+                        "human_id": s.human_id,
+                        "status": s.status.value,
+                        "messages": s.messages[-20:],  # Last 20 messages
+                        "pending_escalations": [str(e) for e in s.pending_escalations],
+                        "created_at": s.created_at.isoformat(),
+                        "updated_at": s.updated_at.isoformat(),
+                    }
+                    for s in sessions
+                ],
+                "count": len(sessions),
+                "magic_enabled": True,
+            })
+        except Exception as e:
+            logger.error("api_magic_sessions_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/magic/feedback", methods=["POST"])
+    async def submit_magic_feedback(request: Request) -> JSONResponse:
+        """Submit human feedback."""
+        try:
+            magic_core = getattr(mcp._orchestrator, "_magic_core", None)
+            if not magic_core:
+                return JSONResponse({"error": "MAGIC not enabled"}, status_code=400)
+
+            body = await request.json()
+            from uuid import UUID as _UUID
+            from xteam_agents.models.magic import FeedbackType, HumanFeedback
+
+            feedback = HumanFeedback(
+                task_id=_UUID(body["task_id"]),
+                feedback_type=FeedbackType(body.get("feedback_type", "comment")),
+                content=body.get("content", ""),
+                target_node=body.get("target_node"),
+                rating=body.get("rating"),
+                should_persist=body.get("should_persist", False),
+                applies_to=body.get("applies_to"),
+                human_id=body.get("human_id", "dashboard"),
+            )
+
+            await magic_core.feedback_collector.record_feedback(feedback)
+            magic_core.evolution_engine.record_feedback(
+                converted_to_guideline=feedback.should_persist
+            )
+
+            return JSONResponse({"feedback_id": str(feedback.id), "status": "recorded"})
+        except Exception as e:
+            logger.error("api_magic_feedback_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/magic/confidence/{task_id}", methods=["GET"])
+    async def get_magic_confidence(request: Request) -> JSONResponse:
+        """Get confidence scores for a task."""
+        try:
+            task_id = request.path_params["task_id"]
+            from uuid import UUID as _UUID
+
+            if mcp._orchestrator.memory_manager:
+                task_state = await mcp._orchestrator.memory_manager.get_task_state(
+                    _UUID(task_id)
+                )
+                if task_state:
+                    return JSONResponse({
+                        "task_id": task_id,
+                        "scores": task_state.get("confidence_scores", {}),
+                    })
+
+            return JSONResponse({"task_id": task_id, "scores": {}})
+        except Exception as e:
+            logger.error("api_magic_confidence_error", error=str(e))
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @mcp.custom_route("/api/magic/evolution", methods=["GET"])
+    async def get_magic_evolution(request: Request) -> JSONResponse:
+        """Get evolution metrics."""
+        try:
+            magic_core = getattr(mcp._orchestrator, "_magic_core", None)
+            if not magic_core:
+                return JSONResponse({"metrics": [], "proposals": [], "magic_enabled": False})
+
+            metrics = magic_core.compute_metrics()
+            proposals = magic_core.get_improvement_proposals()
+
+            return JSONResponse({
+                "metrics": [
+                    {
+                        "name": m.name,
+                        "value": m.value,
+                        "trend": m.trend,
+                        "period_days": m.period_days,
+                    }
+                    for m in metrics
+                ],
+                "proposals": proposals,
+                "magic_enabled": True,
+            })
+        except Exception as e:
+            logger.error("api_magic_evolution_error", error=str(e))
             return JSONResponse({"error": str(e)}, status_code=500)
 
     @mcp.custom_route("/health", methods=["GET"])

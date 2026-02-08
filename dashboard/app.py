@@ -18,61 +18,219 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- Custom CSS (Cyberpunk/Glassmorphism) ---
+# --- Custom CSS (Ultra-Modern Cyberpunk/Glassmorphism) ---
 st.markdown("""
 <style>
+    /* Import Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    /* CSS Variables */
+    :root {
+        /* Neon Accents */
+        --neon-green: #00ff9f;
+        --neon-pink: #ff006e;
+        --neon-cyan: #00d9ff;
+        --neon-blue: #58a6ff;
+
+        /* Dark Backgrounds */
+        --bg-primary: #0a0e1a;
+        --bg-secondary: #0e1525;
+        --bg-tertiary: #161d2f;
+
+        /* Glassmorphism */
+        --glass-bg: rgba(22, 29, 47, 0.7);
+        --glass-border: rgba(88, 166, 255, 0.2);
+    }
+
+    /* Hide Streamlit UI */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .css-1rs6os, .css-17ziqus {visibility: hidden;}
+    .css-1vbkxwb, .viewerBadge_container__1QSob {display: none;}
+
     /* Global Theme */
     .stApp {
-        background-color: #0e1117;
+        background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
         color: #ffffff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    
+
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #161b22;
-        border-right: 1px solid #30363d;
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-right: 1px solid var(--glass-border);
     }
-    
-    /* Cards / Containers */
-    div[data-testid="stMetric"], div[data-testid="stExpander"] {
-        background-color: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+
+    /* Glassmorphism Cards */
+    div[data-testid="stMetric"],
+    div[data-testid="stExpander"],
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.37),
+            inset 0 0 20px rgba(88, 166, 255, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    
-    /* Headers */
-    h1, h2, h3 {
-        color: #58a6ff !important;
+
+    div[data-testid="stMetric"]:hover,
+    .glass-card:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 12px 48px rgba(0, 255, 159, 0.2),
+            inset 0 0 30px rgba(88, 166, 255, 0.1);
+        border-color: var(--neon-green);
+    }
+
+    /* Headers with Neon Effect */
+    h1 {
+        color: var(--neon-cyan) !important;
         font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        text-shadow: 0 0 10px var(--neon-cyan);
     }
-    
-    /* Buttons */
+
+    h2 {
+        color: var(--neon-green) !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+    }
+
+    h3 {
+        color: var(--neon-blue) !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+    }
+
+    /* Buttons with Neon Glow */
     .stButton > button {
-        background-color: #238636;
+        background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
         color: white;
-        border: none;
-        border-radius: 6px;
+        border: 2px solid var(--neon-green);
+        border-radius: 8px;
+        font-weight: 600;
         transition: all 0.3s ease;
+        box-shadow: 0 0 10px rgba(0, 255, 159, 0.3);
     }
+
     .stButton > button:hover {
-        background-color: #2ea043;
-        box-shadow: 0 0 10px rgba(46, 160, 67, 0.5);
+        background: linear-gradient(135deg, #2ea043 0%, #238636 100%);
+        box-shadow:
+            0 0 20px rgba(0, 255, 159, 0.6),
+            0 0 40px rgba(0, 255, 159, 0.3);
+        transform: translateY(-2px);
+        border-color: var(--neon-cyan);
     }
-    
-    /* Logs / Terminal */
-    .stCode {
-        background-color: #0d1117 !important;
-        border: 1px solid #30363d;
-        color: #c9d1d9 !important;
+
+    /* Code/Terminal Blocks */
+    .stCode, code, pre {
+        background-color: #000000 !important;
+        border: 1px solid var(--neon-green) !important;
+        border-radius: 8px;
+        color: #00ff9f !important;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        box-shadow: inset 0 0 20px rgba(0, 255, 159, 0.1);
     }
-    
-    /* Progress/Status Colors */
-    .status-active { color: #3fb950; text-shadow: 0 0 5px #3fb950; }
-    .status-error { color: #f85149; text-shadow: 0 0 5px #f85149; }
-    .status-idle { color: #8b949e; }
-    
+
+    /* Status Colors */
+    .status-active, .status-executing, .status-analyzing {
+        color: var(--neon-green);
+        text-shadow: 0 0 10px var(--neon-green);
+        font-weight: 600;
+    }
+
+    .status-error, .status-failed {
+        color: #f85149;
+        text-shadow: 0 0 10px #f85149;
+        font-weight: 600;
+    }
+
+    .status-idle, .status-pending {
+        color: #8b949e;
+    }
+
+    .status-completed {
+        color: var(--neon-cyan);
+        text-shadow: 0 0 10px var(--neon-cyan);
+        font-weight: 600;
+    }
+
+    /* Neon Text Animation */
+    .neon-text {
+        color: var(--neon-green);
+        text-shadow:
+            0 0 5px var(--neon-green),
+            0 0 10px var(--neon-green),
+            0 0 20px var(--neon-green);
+        animation: flicker 3s infinite alternate;
+    }
+
+    @keyframes flicker {
+        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+        20%, 24%, 55% { opacity: 0.85; }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg-primary);
+        border-radius: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, var(--neon-green), var(--neon-cyan));
+        border-radius: 6px;
+        border: 2px solid var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, var(--neon-cyan), var(--neon-pink));
+    }
+
+    /* Dataframes */
+    [data-testid="stDataFrame"] {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+    }
+
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--neon-green) !important;
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    /* Fallback for browsers without backdrop-filter */
+    @supports not (backdrop-filter: blur(10px)) {
+        .glass-card,
+        div[data-testid="stMetric"],
+        [data-testid="stSidebar"] {
+            background: var(--bg-tertiary);
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,17 +252,444 @@ LOTTIE_URLS = {
     "fail": "https://lottie.host/3a479482-5369-4505-8968-385011707572/L53069152n.json"     # Error
 }
 
-# Use a generic fallback if these specific IDs don't resolve (simulated for now since we can't browse dynamic IDs easily)
-# In production we would host these locally.
-# Let's use a helper to load or return None
-def load_lottie_url(url: str):
+# Enhanced Lottie loader with timeout and better error handling
+def load_lottie_url(url: str, timeout: int = 5):
+    """
+    Load Lottie animation from URL with timeout and error handling.
+
+    Args:
+        url: URL to Lottie JSON file
+        timeout: Request timeout in seconds
+
+    Returns:
+        Lottie JSON dict or None if failed
+    """
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=timeout)
         if r.status_code != 200:
             return None
         return r.json()
-    except:
+    except (requests.RequestException, ValueError, json.JSONDecodeError):
         return None
+
+def get_agent_emoji(agent_state: str) -> str:
+    """Get emoji representation for agent state"""
+    emoji_map = {
+        "analyze": "🔍",
+        "plan": "📋",
+        "execute": "⚡",
+        "validate": "✅",
+        "commit": "💾",
+        "reflect": "🤔",
+        "fail": "❌"
+    }
+    return emoji_map.get(agent_state, "🤖")
+
+def get_agent_color(agent_name: str) -> str:
+    """Return neon color for agent"""
+    color_map = {
+        "analyze": "#00d9ff",  # Cyan
+        "plan": "#00ff9f",     # Green
+        "execute": "#ff006e",  # Pink
+        "validate": "#58a6ff", # Blue
+        "commit": "#00ff9f",   # Green
+        "reflect": "#00d9ff",  # Cyan
+        "fail": "#f85149",     # Red
+        "system": "#8b949e"    # Gray
+    }
+    return color_map.get(agent_name.lower(), "#ffffff")
+
+def render_agent_animation(agent_state: str, size: int = 450):
+    """
+    Render agent animation with loading state and fallback.
+
+    Args:
+        agent_state: Current agent state (analyze, plan, execute, etc.)
+        size: Animation height in pixels
+    """
+    import time
+
+    lottie_url = LOTTIE_URLS.get(agent_state, LOTTIE_URLS["analyze"])
+
+    # Loading placeholder
+    placeholder = st.empty()
+    with placeholder.container():
+        st.markdown("""
+        <div style="text-align: center; padding: 20px;">
+            <div class="loading-spinner">🔄</div>
+            <p style="color: var(--neon-cyan);">Loading animation...</p>
+        </div>
+        <style>
+        .loading-spinner {
+            font-size: 48px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    # Load animation
+    lottie_json = load_lottie_url(lottie_url)
+
+    if lottie_json:
+        placeholder.empty()
+        # Render with glow effect
+        st.markdown(f"""
+        <div class="animation-container" style="
+            padding: 30px;
+            border-radius: 20px;
+            background: radial-gradient(circle, rgba(0,255,159,0.15) 0%, transparent 70%);
+            text-align: center;
+        ">
+        """, unsafe_allow_html=True)
+
+        st_lottie(
+            lottie_json,
+            height=size,
+            key=f"agent_{agent_state}_{int(time.time() * 1000)}",
+            speed=1.0,
+            loop=True,
+            quality="high"
+        )
+
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        # CSS-animated emoji fallback
+        placeholder.empty()
+        emoji = get_agent_emoji(agent_state)
+        st.markdown(f"""
+        <div class="agent-fallback" style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: {size}px;
+            position: relative;
+        ">
+            <div class="agent-pulse"></div>
+            <div class="agent-emoji">{emoji}</div>
+            <p class="fallback-text">Animation unavailable</p>
+        </div>
+        <style>
+        .agent-emoji {{
+            font-size: 150px;
+            animation: float 3s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
+        }}
+        @keyframes float {{
+            0%, 100% {{ transform: translateY(0) rotate(0deg); }}
+            25% {{ transform: translateY(-15px) rotate(5deg); }}
+            75% {{ transform: translateY(-15px) rotate(-5deg); }}
+        }}
+        .agent-pulse {{
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--neon-green) 0%, transparent 70%);
+            opacity: 0.3;
+            animation: pulse 2s ease-in-out infinite;
+            z-index: 1;
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ transform: scale(0.8); opacity: 0.2; }}
+            50% {{ transform: scale(1.3); opacity: 0.5); }}
+        }}
+        .fallback-text {{
+            color: var(--neon-cyan);
+            font-size: 14px;
+            margin-top: 20px;
+            font-family: 'Inter', sans-serif;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+def render_mission_control_header(task_id: str, task_status: str):
+    """
+    Render mission control status bar with system stats.
+
+    Args:
+        task_id: Current task ID
+        task_status: Current task status
+    """
+    # Calculate uptime (simplified - could use actual system start time)
+    uptime = "24:35:12"  # TODO: Calculate from system start
+
+    # System status indicator
+    system_status = "🟢 OPERATIONAL"
+
+    st.markdown(f"""
+    <div class="mission-control-header glass-card">
+        <div class="mc-section">
+            <span class="mc-label">◉ MISSION ID</span>
+            <span class="mc-value neon-text">{task_id[:12]}</span>
+        </div>
+        <div class="mc-divider"></div>
+        <div class="mc-section">
+            <span class="mc-label">◉ STATUS</span>
+            <span class="mc-value status-{task_status.lower()}">{task_status.upper()}</span>
+        </div>
+        <div class="mc-divider"></div>
+        <div class="mc-section">
+            <span class="mc-label">◉ UPTIME</span>
+            <span class="mc-value">{uptime}</span>
+        </div>
+        <div class="mc-divider"></div>
+        <div class="mc-section">
+            <span class="mc-label">◉ SYSTEM</span>
+            <span class="mc-value">{system_status}</span>
+        </div>
+    </div>
+    <style>
+    .mission-control-header {{
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 25px 20px;
+        margin-bottom: 30px;
+        border: 2px solid var(--glass-border);
+        box-shadow:
+            0 4px 30px rgba(0, 255, 159, 0.1),
+            inset 0 0 20px rgba(0, 217, 255, 0.05);
+    }}
+    .mc-section {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }}
+    .mc-divider {{
+        width: 1px;
+        height: 50px;
+        background: linear-gradient(
+            to bottom,
+            transparent,
+            var(--neon-cyan),
+            transparent
+        );
+    }}
+    .mc-label {{
+        font-size: 10px;
+        color: #8b949e;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        font-weight: 600;
+    }}
+    .mc-value {{
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffffff;
+        font-family: 'JetBrains Mono', monospace;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+def render_matrix_terminal(logs: list):
+    """
+    Render logs in Matrix-style terminal with color coding.
+
+    Args:
+        logs: List of tuples (timestamp, agent_name, description, data)
+    """
+    st.markdown('<div class="matrix-terminal">', unsafe_allow_html=True)
+
+    if not logs:
+        st.markdown('<p class="no-logs">No activity logged yet...</p>', unsafe_allow_html=True)
+    else:
+        for log in logs:
+            timestamp = log[0].strftime('%H:%M:%S.%f')[:-3]  # Millisecond precision
+            agent = (log[1] or "system").upper()
+            message = log[2]
+
+            # Get color for agent
+            color = get_agent_color(log[1].lower() if log[1] else "system")
+
+            # Truncate long messages
+            if len(message) > 80:
+                message = message[:77] + "..."
+
+            st.markdown(f"""
+            <div class="terminal-line">
+                <span class="timestamp">[{timestamp}]</span>
+                <span class="agent-name" style="color: {color};">{agent:12s}</span>
+                <span class="message">{message}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Add terminal styling
+    st.markdown("""
+    <style>
+    .matrix-terminal {
+        background: #000000;
+        border: 2px solid var(--neon-green);
+        border-radius: 8px;
+        padding: 15px;
+        max-height: 520px;
+        overflow-y: auto;
+        font-family: 'JetBrains Mono', monospace;
+        box-shadow:
+            inset 0 0 30px rgba(0, 255, 159, 0.1),
+            0 0 20px rgba(0, 255, 159, 0.2);
+        position: relative;
+    }
+
+    .terminal-line {
+        margin: 8px 0;
+        font-size: 12px;
+        line-height: 1.8;
+        animation: fadeInTerminal 0.3s ease-in;
+        display: flex;
+        gap: 10px;
+    }
+
+    @keyframes fadeInTerminal {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .timestamp {
+        color: #6e7681;
+        flex-shrink: 0;
+    }
+
+    .agent-name {
+        font-weight: bold;
+        flex-shrink: 0;
+        text-shadow: 0 0 8px currentColor;
+    }
+
+    .message {
+        color: #c9d1d9;
+        flex: 1;
+    }
+
+    .no-logs {
+        color: #6e7681;
+        text-align: center;
+        padding: 40px;
+        font-style: italic;
+    }
+
+    /* Custom scrollbar for terminal */
+    .matrix-terminal::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .matrix-terminal::-webkit-scrollbar-track {
+        background: #0a0e1a;
+        border-radius: 4px;
+    }
+
+    .matrix-terminal::-webkit-scrollbar-thumb {
+        background: var(--neon-green);
+        border-radius: 4px;
+        box-shadow: 0 0 5px var(--neon-green);
+    }
+
+    .matrix-terminal::-webkit-scrollbar-thumb:hover {
+        background: var(--neon-cyan);
+        box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    /* Scanline effect (subtle) */
+    .matrix-terminal::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: repeating-linear-gradient(
+            0deg,
+            rgba(0, 255, 159, 0.03) 0px,
+            transparent 1px,
+            transparent 2px,
+            rgba(0, 255, 159, 0.03) 3px
+        );
+        pointer-events: none;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def render_cognitive_graph(current_node: str):
+    """
+    Render cognitive flow graph with enhanced neon styling.
+
+    Args:
+        current_node: Currently active node name
+    """
+    graph = graphviz.Digraph()
+    graph.attr(rankdir='TB', bgcolor='transparent', dpi='150')
+    graph.attr('node',
+               shape='box',
+               style='filled,rounded',
+               fontname='Inter',
+               fontsize='14',
+               margin='0.4,0.2',
+               height='0.8',
+               width='1.5')
+    graph.attr('edge',
+               penwidth='2.5',
+               arrowsize='1.0',
+               fontname='Inter',
+               fontsize='11')
+
+    # Node definitions with emoji
+    nodes = [
+        ("analyze", "🔍\nANALYZE"),
+        ("plan", "📋\nPLAN"),
+        ("execute", "⚡\nEXECUTE"),
+        ("validate", "✓\nVALIDATE"),
+        ("commit", "💾\nCOMMIT"),
+        ("reflect", "🤔\nREFLECT")
+    ]
+
+    for node_id, label in nodes:
+        if node_id == current_node:
+            # Active node - neon green glow
+            graph.node(node_id, label,
+                      fillcolor='#238636:#2ea043',  # Gradient
+                      color='#00ff9f',
+                      penwidth='4',
+                      fontcolor='#ffffff',
+                      style='filled,rounded,bold')
+        else:
+            # Inactive node - subtle
+            graph.node(node_id, label,
+                      fillcolor='#161b22',
+                      color='#30363d',
+                      penwidth='2',
+                      fontcolor='#8b949e')
+
+    # Edges with styled labels
+    graph.edge("analyze", "plan", color='#30363d:#58a6ff')
+    graph.edge("plan", "execute", color='#30363d:#58a6ff')
+    graph.edge("execute", "validate", color='#30363d:#58a6ff')
+    graph.edge("validate", "commit",
+              label=" ✓ pass ",
+              fontcolor='#3fb950',
+              color='#3fb950')
+    graph.edge("validate", "plan",
+              label=" ⟲ replan ",
+              style="dashed",
+              fontcolor='#f85149',
+              color='#f85149')
+    graph.edge("commit", "reflect", color='#30363d:#58a6ff')
+
+    st.graphviz_chart(graph, use_container_width=True)
 
 # --- Sidebar ---
 st.sidebar.title("🤖 XTeam Agents")
@@ -115,6 +700,7 @@ page = st.sidebar.radio("Navigation", [
     "Live Agents",
     "Adversarial Team",
     "Quality Metrics",
+    "MAGIC Control",
     "Chat",
     "Tasks",
     "Workspace",
@@ -242,112 +828,123 @@ def show_workspace():
             st.rerun()
 
 def show_live_agents():
-    st.title("Live Cognitive Graph")
-    
+    """Enhanced live cognitive graph with Mission Control layout"""
+    st.title("🎯 Mission Control: Live Cognitive Graph")
+
     conn = get_db_connection()
-    
-    # 1. Select Active Task
     cur = conn.cursor()
+
+    # 1. Select Active Task
     cur.execute("""
-        SELECT task_id, description, status 
-        FROM tasks 
-        WHERE status IN ('pending', 'analyzing', 'planning', 'executing', 'validating') 
+        SELECT task_id, description, status
+        FROM tasks
+        WHERE status IN ('pending', 'analyzing', 'planning', 'executing', 'validating')
         ORDER BY created_at DESC
     """)
     active_tasks = cur.fetchall()
-    
+
     if not active_tasks:
-        st.info("No active tasks running currently.")
-        # Allow selecting completed tasks for replay/review
+        st.info("No active tasks running currently. Showing recent tasks for review.")
         cur.execute("SELECT task_id, description, status FROM tasks ORDER BY created_at DESC LIMIT 10")
         recent_tasks = cur.fetchall()
         task_options = {f"{t[0]} ({t[2]})": t[0] for t in recent_tasks}
     else:
         task_options = {f"{t[0]} ({t[2]}) - {t[1][:30]}...": t[0] for t in active_tasks}
-    
-    selected_option = st.selectbox("Select Task to Monitor", list(task_options.keys()))
-    
+
+    selected_option = st.selectbox("🎯 Select Task to Monitor", list(task_options.keys()))
+
     if selected_option:
         task_id = task_options[selected_option]
-        
-        col1, col2, col3 = st.columns([1.5, 2, 1.5])
-        
-        with col1:
-            st.subheader("Agent State")
-            
-            # Get latest node from audit log
-            cur.execute("""
-                SELECT node_name, event_type 
-                FROM audit_log 
-                WHERE task_id = %s AND event_type IN ('node_entered', 'node_exited', 'task_failed', 'task_completed')
-                ORDER BY timestamp DESC LIMIT 1
-            """, (task_id,))
-            last_event = cur.fetchone()
-            current_node = last_event[0] if last_event else "analyze" # Default to analyze start
-            
-            # Handle fail state
-            if last_event and last_event[1] == 'task_failed':
-                current_node = "fail"
-            
-            # Display Lottie
-            lottie_url = LOTTIE_URLS.get(current_node, LOTTIE_URLS["analyze"])
-            lottie_json = load_lottie_url(lottie_url)
-            
-            if lottie_json:
-                st_lottie(lottie_json, height=300, key="agent_anim")
-            else:
-                st.image("https://via.placeholder.com/300x300.png?text=Agent+Working", caption="Agent Animation")
-            
-            st.markdown(f"<h3 style='text-align: center; color: #3fb950;'>Current Phase: {current_node.upper()}</h3>", unsafe_allow_html=True)
-            
-        with col2:
-            st.subheader("Cognitive Map")
-            # Graphviz Chart (Styled)
-            graph = graphviz.Digraph()
-            graph.attr(rankdir='LR', bgcolor='#0d1117')
-            graph.attr('node', shape='box', style='filled', fontname='Inter', fontcolor='white')
-            graph.attr('edge', color='#30363d')
-            
-            nodes = ["analyze", "plan", "execute", "validate", "commit", "reflect"]
-            
-            for node in nodes:
-                color = "#161b22" # Default inactive
-                pencolor = "#30363d"
-                
-                if node == current_node:
-                    color = "#238636" # Active Green
-                    pencolor = "#3fb950"
-                elif node == "fail" and current_node == "fail":
-                     # Special case if we had a fail node in graph, but we don't, we just color current
-                     pass
 
-                graph.node(node, node.upper(), fillcolor=color, color=pencolor)
-            
-            # Edges
-            graph.edge("analyze", "plan")
-            graph.edge("plan", "execute")
-            graph.edge("execute", "validate")
-            graph.edge("validate", "commit", label="ok")
-            graph.edge("validate", "plan", label="fail", style="dashed")
-            graph.edge("commit", "reflect")
-            graph.edge("validate", "reflect", label="max_retries", style="dashed")
-            
-            st.graphviz_chart(graph, use_container_width=True)
-            
-        with col3:
-            st.subheader("Live Terminal")
-            # Poll audit logs
+        # Get task status
+        cur.execute("SELECT status FROM tasks WHERE task_id = %s", (task_id,))
+        task_status = cur.fetchone()[0]
+
+        # Render Mission Control Header
+        render_mission_control_header(task_id, task_status)
+
+        # Get current node from audit log
+        cur.execute("""
+            SELECT node_name, event_type
+            FROM audit_log
+            WHERE task_id = %s AND event_type IN ('node_entered', 'node_exited', 'task_failed', 'task_completed')
+            ORDER BY timestamp DESC LIMIT 1
+        """, (task_id,))
+        last_event = cur.fetchone()
+        current_node = last_event[0] if last_event else "analyze"
+
+        # Handle fail/complete states
+        if last_event:
+            if last_event[1] == 'task_failed':
+                current_node = "fail"
+            elif last_event[1] == 'task_completed':
+                current_node = "commit"
+
+        # Main 3-Panel Layout
+        col_stage, col_flow, col_terminal = st.columns([2, 2.5, 2])
+
+        # LEFT: The Stage (Agent Animation)
+        with col_stage:
+            st.markdown('<div class="glass-card" style="min-height: 600px;">', unsafe_allow_html=True)
+            st.markdown("### 🎭 THE STAGE")
+
+            # Render animation
+            render_agent_animation(current_node, size=400)
+
+            # Agent status display
+            thinking_text = "Processing..." if current_node != "fail" else "Error Detected"
+            st.markdown(f"""
+            <div class="agent-status-display" style="
+                text-align: center;
+                margin-top: 20px;
+                padding: 20px;
+                background: rgba(0, 0, 0, 0.3);
+                border-radius: 12px;
+                border: 1px solid var(--neon-green);
+            ">
+                <h2 class="neon-text" style="margin: 0; font-size: 28px;">{current_node.upper()}</h2>
+                <p style="
+                    color: var(--neon-cyan);
+                    margin: 10px 0 0 0;
+                    font-size: 16px;
+                    font-style: italic;
+                ">{thinking_text}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # CENTER: The Flow (Cognitive Graph)
+        with col_flow:
+            st.markdown('<div class="glass-card" style="min-height: 600px;">', unsafe_allow_html=True)
+            st.markdown("### 🔄 THE FLOW")
+
+            # Render enhanced graph
+            render_cognitive_graph(current_node)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # RIGHT: The Terminal (Logs)
+        with col_terminal:
+            st.markdown('<div class="glass-card terminal-container" style="min-height: 600px;">', unsafe_allow_html=True)
+            st.markdown("### 💻 THE TERMINAL")
+
+            # Get logs
             cur.execute("""
                 SELECT timestamp, node_name, description, data
-                FROM audit_log 
+                FROM audit_log
                 WHERE task_id = %s
                 ORDER BY timestamp DESC LIMIT 20
             """, (task_id,))
             logs = cur.fetchall()
-            
-            for log in logs:
-                agent_name = log[1] if log[1] else "system"
-                st.code(f"[{log[0].strftime('%H:%M:%S')}] {agent_name.upper()}\n{log[2]}", language="bash")
+
+            # Render matrix-style terminal
+            render_matrix_terminal(logs)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    cur.close()
+    conn.close()
 
 def show_brain_inspector():
     st.title("Brain Inspector")
@@ -890,6 +1487,297 @@ def show_quality_metrics():
     except Exception as e:
         st.error(f"Connection error: {e}")
 
+def show_magic_control():
+    st.title("MAGIC Control Center")
+    st.info("Human-Machine Artificial General Intelligence Core - Human-AI Collaboration")
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "Pending Escalations",
+        "Active Sessions",
+        "Confidence Dashboard",
+        "Feedback & Learning",
+        "Evolution Metrics",
+    ])
+
+    # --- Tab 1: Pending Escalations ---
+    with tab1:
+        st.subheader("Pending Escalations")
+        try:
+            res = requests.get(f"{MCP_SERVER_URL}/api/magic/escalations")
+            if res.status_code == 200:
+                data = res.json()
+                if not data.get("magic_enabled", False):
+                    st.warning("MAGIC system is not enabled. Set MAGIC_ENABLED=true in config.")
+                else:
+                    escalations = data.get("escalations", [])
+                    if not escalations:
+                        st.success("No pending escalations. System is running autonomously.")
+                    else:
+                        for esc in escalations:
+                            priority_colors = {
+                                "critical": "#f85149",
+                                "high": "#ffa657",
+                                "medium": "#58a6ff",
+                                "low": "#8b949e",
+                            }
+                            color = priority_colors.get(esc["priority"], "#ffffff")
+
+                            with st.expander(
+                                f"[{esc['priority'].upper()}] {esc['question'][:80]}...",
+                                expanded=True,
+                            ):
+                                st.markdown(f"**Priority:** <span style='color:{color}'>{esc['priority'].upper()}</span>", unsafe_allow_html=True)
+                                st.markdown(f"**Stage:** {esc['stage']}")
+                                st.markdown(f"**Reason:** {esc['reason']}")
+                                st.markdown(f"**Task ID:** `{esc['task_id']}`")
+                                st.markdown(f"**Question:** {esc['question']}")
+
+                                if esc.get("confidence"):
+                                    conf = esc["confidence"]
+                                    st.markdown(f"**Confidence:** {conf.get('overall', 'N/A')}")
+
+                                if esc.get("options"):
+                                    st.markdown("**Options:**")
+                                    for opt in esc["options"]:
+                                        st.markdown(f"- {opt}")
+
+                                # Response form
+                                with st.form(f"respond_{esc['id']}"):
+                                    response_type = st.selectbox(
+                                        "Response Type",
+                                        ["approval", "rejection", "guidance", "modification", "override", "deferral"],
+                                        key=f"rt_{esc['id']}",
+                                    )
+                                    content = st.text_area("Response", key=f"rc_{esc['id']}")
+                                    submitted = st.form_submit_button("Submit Response")
+
+                                    if submitted:
+                                        try:
+                                            resp = requests.post(
+                                                f"{MCP_SERVER_URL}/api/magic/escalations/{esc['id']}/respond",
+                                                json={
+                                                    "response_type": response_type,
+                                                    "content": content,
+                                                    "human_id": "dashboard",
+                                                },
+                                            )
+                                            if resp.status_code == 200:
+                                                st.success("Response submitted!")
+                                                st.rerun()
+                                            else:
+                                                st.error(f"Error: {resp.text}")
+                                        except Exception as e:
+                                            st.error(f"Connection error: {e}")
+            else:
+                st.error(f"Failed to fetch escalations: {res.text}")
+        except Exception as e:
+            st.error(f"Connection error: {e}")
+
+    # --- Tab 2: Active Sessions ---
+    with tab2:
+        st.subheader("Active Collaborative Sessions")
+        try:
+            res = requests.get(f"{MCP_SERVER_URL}/api/magic/sessions")
+            if res.status_code == 200:
+                data = res.json()
+                sessions = data.get("sessions", [])
+                if not sessions:
+                    st.info("No active sessions.")
+                else:
+                    for session in sessions:
+                        with st.expander(f"Session {session['id'][:8]}... - Task {session['task_id'][:8]}..."):
+                            st.markdown(f"**Status:** {session['status']}")
+                            st.markdown(f"**Human:** {session['human_id']}")
+                            st.markdown(f"**Created:** {session['created_at']}")
+
+                            if session.get("messages"):
+                                st.markdown("**Messages:**")
+                                for msg in session["messages"]:
+                                    role = msg.get("role", "system")
+                                    content = msg.get("content", "")
+                                    icon = "🤖" if role == "system" else "👤"
+                                    st.markdown(f"{icon} **{role}:** {content}")
+
+                            if session.get("pending_escalations"):
+                                st.markdown(f"**Pending Escalations:** {len(session['pending_escalations'])}")
+            else:
+                st.error(f"Failed to fetch sessions: {res.text}")
+        except Exception as e:
+            st.error(f"Connection error: {e}")
+
+    # --- Tab 3: Confidence Dashboard ---
+    with tab3:
+        st.subheader("Confidence Scores")
+
+        # Task selector
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT task_id, description FROM tasks ORDER BY created_at DESC LIMIT 20")
+            tasks = cur.fetchall()
+            cur.close()
+        except Exception:
+            tasks = []
+        finally:
+            if conn:
+                conn.close()
+
+        if tasks:
+            task_map = {f"{t[0][:8]}... - {t[1][:40]}": t[0] for t in tasks}
+            selected = st.selectbox("Select Task", list(task_map.keys()), key="conf_task")
+
+            if selected:
+                task_id = task_map[selected]
+                try:
+                    res = requests.get(f"{MCP_SERVER_URL}/api/magic/confidence/{task_id}")
+                    if res.status_code == 200:
+                        data = res.json()
+                        scores = data.get("scores", {})
+
+                        if scores:
+                            import plotly.graph_objects as go
+
+                            # Radar chart of latest confidence scores
+                            stages = list(scores.keys())
+                            overall_values = []
+                            for stage in stages:
+                                score = scores[stage]
+                                if isinstance(score, dict):
+                                    overall_values.append(score.get("overall", 0))
+                                else:
+                                    overall_values.append(0)
+
+                            if stages and overall_values:
+                                fig = go.Figure()
+                                fig.add_trace(go.Scatterpolar(
+                                    r=overall_values + [overall_values[0]],
+                                    theta=stages + [stages[0]],
+                                    fill='toself',
+                                    name='Confidence',
+                                    line=dict(color='#00ff9f', width=2),
+                                    fillcolor='rgba(0, 255, 159, 0.3)',
+                                ))
+
+                                # Threshold line
+                                threshold = [0.6] * (len(stages) + 1)
+                                fig.add_trace(go.Scatterpolar(
+                                    r=threshold,
+                                    theta=stages + [stages[0]],
+                                    mode='lines',
+                                    name='Threshold (0.6)',
+                                    line=dict(color='#f85149', width=1, dash='dash'),
+                                ))
+
+                                fig.update_layout(
+                                    polar=dict(
+                                        bgcolor='#0d1117',
+                                        radialaxis=dict(visible=True, range=[0, 1], gridcolor='#30363d'),
+                                        angularaxis=dict(gridcolor='#30363d'),
+                                    ),
+                                    paper_bgcolor='#0d1117',
+                                    plot_bgcolor='#0d1117',
+                                    font=dict(color='#c9d1d9'),
+                                    showlegend=True,
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+
+                            # Detailed breakdown
+                            for stage_name, score_data in scores.items():
+                                if isinstance(score_data, dict):
+                                    with st.expander(f"Stage: {stage_name} (Overall: {score_data.get('overall', 'N/A')})"):
+                                        cols = st.columns(5)
+                                        dims = ["factual_accuracy", "completeness", "relevance", "coherence", "novelty_risk"]
+                                        for i, dim in enumerate(dims):
+                                            with cols[i]:
+                                                val = score_data.get(dim, 0)
+                                                st.metric(dim.replace("_", " ").title(), f"{val:.2f}")
+
+                                        if score_data.get("uncertainty_factors"):
+                                            st.markdown("**Uncertainties:**")
+                                            for uf in score_data["uncertainty_factors"]:
+                                                st.markdown(f"- {uf}")
+                                        if score_data.get("knowledge_gaps"):
+                                            st.markdown("**Knowledge Gaps:**")
+                                            for kg in score_data["knowledge_gaps"]:
+                                                st.markdown(f"- {kg}")
+                        else:
+                            st.info("No confidence scores recorded for this task.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        else:
+            st.info("No tasks found.")
+
+    # --- Tab 4: Feedback & Learning ---
+    with tab4:
+        st.subheader("Submit Feedback")
+
+        with st.form("feedback_form"):
+            fb_task_id = st.text_input("Task ID")
+            fb_type = st.selectbox("Feedback Type", ["comment", "correction", "preference", "guideline", "rating"])
+            fb_content = st.text_area("Feedback Content")
+            fb_target = st.selectbox("Target Node", ["", "analyze", "plan", "execute", "validate"])
+            fb_rating = st.slider("Rating (optional)", 0.0, 1.0, 0.5, 0.1)
+            fb_persist = st.checkbox("Save as permanent guideline")
+            fb_submitted = st.form_submit_button("Submit Feedback")
+
+            if fb_submitted and fb_task_id and fb_content:
+                try:
+                    resp = requests.post(
+                        f"{MCP_SERVER_URL}/api/magic/feedback",
+                        json={
+                            "task_id": fb_task_id,
+                            "feedback_type": fb_type,
+                            "content": fb_content,
+                            "target_node": fb_target or None,
+                            "rating": fb_rating,
+                            "should_persist": fb_persist,
+                            "human_id": "dashboard",
+                        },
+                    )
+                    if resp.status_code == 200:
+                        st.success(f"Feedback recorded: {resp.json().get('feedback_id', '')[:8]}...")
+                    else:
+                        st.error(f"Error: {resp.text}")
+                except Exception as e:
+                    st.error(f"Connection error: {e}")
+
+    # --- Tab 5: Evolution Metrics ---
+    with tab5:
+        st.subheader("System Evolution")
+        try:
+            res = requests.get(f"{MCP_SERVER_URL}/api/magic/evolution")
+            if res.status_code == 200:
+                data = res.json()
+                metrics = data.get("metrics", [])
+                proposals = data.get("proposals", [])
+
+                if metrics:
+                    cols = st.columns(len(metrics))
+                    for i, metric in enumerate(metrics):
+                        with cols[i]:
+                            trend_icon = {"improving": "^", "declining": "v", "stable": "-"}.get(metric["trend"], "-")
+                            st.metric(
+                                metric["name"].replace("_", " ").title(),
+                                f"{metric['value']:.1%}",
+                                delta=trend_icon,
+                            )
+                else:
+                    st.info("No evolution metrics yet. Metrics accumulate as the system processes tasks with MAGIC enabled.")
+
+                if proposals:
+                    st.divider()
+                    st.subheader("Improvement Proposals")
+                    for prop in proposals:
+                        priority_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(prop.get("priority", ""), "")
+                        with st.expander(f"{priority_icon} {prop.get('area', 'Unknown').replace('_', ' ').title()}"):
+                            st.write(prop.get("proposal", ""))
+            else:
+                st.error(f"Failed to fetch evolution metrics: {res.text}")
+        except Exception as e:
+            st.error(f"Connection error: {e}")
+
+
 # --- Routing ---
 
 if page == "Overview":
@@ -900,6 +1788,8 @@ elif page == "Adversarial Team":
     show_adversarial_team()
 elif page == "Quality Metrics":
     show_quality_metrics()
+elif page == "MAGIC Control":
+    show_magic_control()
 elif page == "Chat":
     show_chat()
 elif page == "Tasks":

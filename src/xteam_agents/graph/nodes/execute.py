@@ -1,5 +1,7 @@
 """Worker agent node."""
 
+from __future__ import annotations
+
 from typing import Any, Callable, Optional
 
 import structlog
@@ -54,6 +56,7 @@ def create_execute_node(
     action_executor: ActionExecutor,
     adversarial_graph: Optional[StateGraph] = None,
     settings: Optional[Settings] = None,
+    magic_core: Any | None = None,
 ) -> Callable[[AgentState], AgentState]:
     """
     Create the execute node function.
@@ -347,13 +350,30 @@ Report your execution results clearly.
             action_count=len(execution_results),
         )
 
-        # Return state updates
-        return {
+        # MAGIC: assess confidence if enabled
+        state_updates: dict[str, Any] = {
             "execution_result": execution_result,
             "subtasks": updated_subtasks,
             "artifacts": artifacts,
             "current_node": next_node,
             "messages": state.messages + [AIMessage(content=execution_result)],
         }
+
+        if magic_core and state.magic_config and state.magic_config.enabled:
+            try:
+                confidence = await magic_core.assess_confidence(
+                    str(state.task_id),
+                    "execute",
+                    execution_result,
+                    state.description,
+                )
+                state_updates["confidence_scores"] = {
+                    **state.confidence_scores,
+                    "execute": confidence.to_dict(),
+                }
+            except Exception as e:
+                logger.warning("magic_confidence_assess_failed", error=str(e))
+
+        return state_updates
 
     return execute_node

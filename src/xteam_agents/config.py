@@ -101,6 +101,15 @@ class Settings(BaseSettings):
     n8n_url: str | None = Field(default=None, description="n8n webhook URL")
     n8n_api_key: SecretStr | None = Field(default=None)
 
+    # MAGIC (Human-AI Collaboration) Configuration
+    magic_enabled: bool = Field(default=False, description="Enable MAGIC human-AI collaboration")
+    magic_default_autonomy: str = Field(default="collaborative", description="Default autonomy level")
+    magic_default_confidence_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    magic_default_escalation_timeout: int = Field(default=300, ge=1)
+    magic_default_fallback: str = Field(default="continue", description="Fallback on timeout: continue, pause, fail")
+    magic_default_checkpoints: str = Field(default="", description="Comma-separated default checkpoints")
+    magic_webhook_url: str | None = Field(default=None, description="Webhook URL for MAGIC notifications")
+
     def get_llm_api_key(self) -> str:
         """Get the API key for the configured LLM provider."""
         if self.llm_provider == LLMProvider.OPENAI:

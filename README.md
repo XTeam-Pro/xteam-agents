@@ -1,16 +1,17 @@
 # XTeam Agents
 
-**Cognitive Operating System + Adversarial Agent Team (Enterprise Grade)**
+**Cognitive Operating System + Adversarial Agent Team + Human-AI Collaboration (Enterprise Grade)**
 Status: **PRODUCTION READY**
-Reference: [SSOT.md](./SSOT.md) (Single Source of Truth)
+Reference: [SSOT.md](./SSOT.md) (Single Source of Truth) | [CLAUDE.md](./CLAUDE.md) (Development Guide)
 
 Integrated AI system combining:
 - **Cognitive OS**: Validated knowledge pipeline with 4 memory backends
 - **Adversarial Agent Team**: 21 AI agents for high-quality complex tasks
+- **MAGIC System**: Human-AI collaboration with intelligent escalation & progressive autonomy
+- **QA Automation**: Multi-agent powered testing orchestration
 - **Automatic Routing**: Simple tasks → fast, Complex tasks → thorough
-- **Shared Resources**: Unified memory and LLM provider
 
-✨ **NEW**: Adversarial Agent Team integration complete! See [INTEGRATION_ARCHITECTURE.md](./INTEGRATION_ARCHITECTURE.md)
+✨ **NEW**: MAGIC System & QA Automation! See [MAGIC_IMPLEMENTATION.md](./MAGIC_IMPLEMENTATION.md) and [CLAUDE.md](./CLAUDE.md)
 
 ## Architecture
 
@@ -55,6 +56,47 @@ START → [analyze] → [plan] → [execute] → [validate] → route_after_vali
 - Conflict resolution and final approval
 
 See [INTEGRATION_USAGE.md](./INTEGRATION_USAGE.md) for details.
+
+### MAGIC System: Human-AI Collaboration
+
+**NEW**: Optional human-AI collaboration layer at every pipeline stage:
+
+- **5 Autonomy Levels**: SUPERVISED → GUIDED → COLLABORATIVE → AUTONOMOUS → TRUSTED
+- **Intelligent Escalation**: Routes to human based on confidence and autonomy level
+- **Confidence Scoring**: Multi-dimensional assessment (5 dimensions)
+- **Human Checkpoints**: 4 optional stages (after_analyze, after_plan, after_execute, after_validate)
+- **Feedback Learning**: Converts feedback to persistent guidelines
+- **Progressive Autonomy**: Tracks metrics and recommends autonomy adjustments
+- **100% Backward Compatible**: Zero overhead when disabled
+
+Use cases:
+- Critical decision tasks requiring human approval
+- Tasks with domain-specific constraints
+- Continuous learning from human feedback
+- Compliance and audit requirements
+
+See [MAGIC_IMPLEMENTATION.md](./MAGIC_IMPLEMENTATION.md) for complete documentation.
+
+### QA Automation System
+
+**NEW**: Multi-agent powered QA orchestration:
+
+- **User Story Analysis**: Automatic generation from system understanding
+- **6 Test Types**: E2E, API, Visual Regression, Performance, Security, Accessibility
+- **Test Creation Agents**: Automatic test code generation
+- **Orchestration**: Phases: Analysis → Test Creation → Execution → Reporting
+- **Progress Tracking**: Coverage matrix and automation status per feature
+- **CI/CD Ready**: GitHub Actions integration included
+- **Dashboard Integration**: Real-time QA metrics and reports
+
+```bash
+cd qa-automation
+npm run qa:orchestrate -- --phase=analysis    # Generate user stories
+npm run test:all                                # Run all test suites
+npm run qa:serve-report                         # View Allure report
+```
+
+See [CLAUDE.md](./CLAUDE.md#qa-automation-system) for setup and usage.
 
 ### Memory Backends
 
@@ -165,6 +207,16 @@ python examples/adversarial_example.py
 - `get_knowledge_graph` - Get task knowledge relationships
 - `get_task_audit_log` - Get task execution history
 
+### MAGIC Human-AI Collaboration (Optional)
+
+- `configure_magic` - Configure MAGIC for a task (autonomy, checkpoints, thresholds)
+- `list_pending_escalations` - View escalations awaiting human response
+- `respond_to_escalation` - Provide human approval/guidance
+- `submit_feedback` - Submit feedback for system learning
+- `get_confidence_scores` - View confidence assessment by stage
+- `get_magic_session` - View collaborative session state
+- `get_evolution_metrics` - View autonomy progression and recommendations
+
 ### Administration
 
 - `list_agents` - See all cognitive agents
@@ -187,8 +239,13 @@ Key environment variables:
 | `QDRANT_URL` | Qdrant connection URL | `http://localhost:6333` |
 | `NEO4J_URL` | Neo4j connection URL | `bolt://localhost:7687` |
 | `POSTGRES_URL` | PostgreSQL connection URL | - |
+| `MAGIC_ENABLED` | Enable human-AI collaboration | `false` |
+| `MAGIC_DEFAULT_AUTONOMY` | Default autonomy level | `collaborative` |
+| `MAGIC_DEFAULT_CONFIDENCE_THRESHOLD` | Escalation threshold (0-1) | `0.6` |
+| `MAGIC_DEFAULT_ESCALATION_TIMEOUT` | Human response timeout (seconds) | `300` |
+| `MAGIC_WEBHOOK_URL` | Notification webhook | - |
 
-See `.env.example` for all options.
+See `.env.example` for all options and `CLAUDE.md` for detailed configuration guide.
 
 ## Development
 
@@ -196,18 +253,29 @@ See `.env.example` for all options.
 # Install dev dependencies
 pip install -e ".[dev]"
 
-# Run tests
+# Run all tests
 pytest
 
 # Run with coverage
 pytest --cov=xteam_agents
+
+# Test MAGIC system (includes backward compatibility)
+pytest tests/unit/test_magic.py -v
 
 # Type checking
 mypy src/xteam_agents
 
 # Linting
 ruff check src/
+
+# QA Automation tests
+cd qa-automation
+npm install
+npm run test:all
+npm run qa:serve-report
 ```
+
+For detailed development instructions, see [CLAUDE.md](./CLAUDE.md).
 
 ## Production Deployment
 
