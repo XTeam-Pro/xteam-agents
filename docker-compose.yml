@@ -94,7 +94,7 @@ services:
       - "8000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.mcp-server.rule=Host(`${DOMAIN:-example.com}`)"
+      - "traefik.http.routers.mcp-server.rule=Host(`mcp.${DOMAIN:-example.com}`)"
       - "traefik.http.routers.mcp-server.entrypoints=websecure"
       - "traefik.http.routers.mcp-server.tls.certresolver=letsencrypt"
       - "traefik.http.services.mcp-server.loadbalancer.server.port=8000"
