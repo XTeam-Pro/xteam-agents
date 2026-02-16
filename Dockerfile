@@ -14,10 +14,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for faster package installation
 RUN pip install uv
 
+# Copy studyninja-magic-sdk (local dependency)
+COPY studyninja-magic-sdk /tmp/studyninja-magic-sdk
+RUN cd /tmp/studyninja-magic-sdk && uv pip install --system -e .
+
 # Copy project files
-COPY pyproject.toml .
-COPY README.md .
-COPY src/ src/
+COPY xteam-agents/pyproject.toml .
+COPY xteam-agents/README.md .
+COPY xteam-agents/src/ src/
 
 # Install dependencies
 RUN uv pip install --system -e ".[dev]"
@@ -37,8 +41,8 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code
-COPY src/ src/
-COPY pyproject.toml .
+COPY xteam-agents/src/ src/
+COPY xteam-agents/pyproject.toml .
 
 # Create non-root user
 RUN useradd -m -u 1000 xteam && \
