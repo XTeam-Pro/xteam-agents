@@ -1,0 +1,29 @@
+id: team.adversarial_default
+name: Default Adversarial Team
+version: "1.0"
+description: Full 21-agent adversarial team with all 10 agent-critic pairs
+pipeline: pipeline.adversarial_team
+orchestrator: adversarial.orchestrator
+pairs:
+  - agent: adversarial.tech_lead
+    critic: adversarial.tech_lead_critic
+  - agent: adversarial.architect
+    critic: adversarial.architect_critic
+  - agent: adversarial.backend
+    critic: adversarial.backend_critic
+  - agent: adversarial.frontend
+    critic: adversarial.frontend_critic
+  - agent: adversarial.data
+    critic: adversarial.data_critic
+  - agent: adversarial.devops
+    critic: adversarial.devops_critic
+  - agent: adversarial.qa
+    critic: adversarial.qa_critic
+  - agent: adversarial.ai_architect
+    critic: adversarial.ai_architect_critic
+  - agent: adversarial.security
+    critic: adversarial.security_critic
+  - agent: adversarial.performance
+    critic: adversarial.performance_critic
+max_iterations: 3
+approval_threshold: 7.0

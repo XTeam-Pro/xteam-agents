@@ -1,0 +1,52 @@
+id: pipeline.research_team
+name: Research Team Pipeline
+version: "1.0"
+description: Research team with scientists, methodologists, and content experts
+entry_point: classify
+state_schema: ResearchState
+resource_budget:
+  max_tokens: 150000
+  max_time_seconds: 500
+  max_depth: 2
+nodes:
+  - node_name: classify
+    agent_id: research.chief_scientist
+  - node_name: chief_scientist
+    agent_id: research.chief_scientist
+  - node_name: data_scientist
+    agent_id: research.data_scientist
+  - node_name: ml_researcher
+    agent_id: research.ml_researcher
+  - node_name: cognitive_scientist
+    agent_id: research.cognitive_scientist
+  - node_name: pedagogical_researcher
+    agent_id: research.pedagogical_researcher
+  - node_name: curriculum_designer
+    agent_id: research.curriculum_designer
+  - node_name: dataset_engineer
+    agent_id: research.dataset_engineer
+  - node_name: peer_review
+    agent_id: __system__.peer_reviewer
+  - node_name: integrate
+    agent_id: research.chief_scientist
+edges:
+  - source: classify
+    target: chief_scientist
+  - source: chief_scientist
+    target: data_scientist
+  - source: data_scientist
+    target: ml_researcher
+  - source: ml_researcher
+    target: cognitive_scientist
+  - source: cognitive_scientist
+    target: pedagogical_researcher
+  - source: pedagogical_researcher
+    target: curriculum_designer
+  - source: curriculum_designer
+    target: dataset_engineer
+  - source: dataset_engineer
+    target: peer_review
+  - source: peer_review
+    target: integrate
+  - source: integrate
+    target: __end__

@@ -1,0 +1,43 @@
+id: pipeline.cognitive_os
+name: Cognitive OS Pipeline
+version: "1.0"
+description: Main cognitive reasoning pipeline with analyze-plan-execute-validate-commit flow
+entry_point: analyze
+state_schema: AgentState
+resource_budget:
+  max_tokens: 100000
+  max_time_seconds: 300
+  max_depth: 3
+  max_parallel: 5
+  max_iterations: 10
+nodes:
+  - node_name: analyze
+    agent_id: cognitive.analyst
+  - node_name: plan
+    agent_id: cognitive.architect
+  - node_name: execute
+    agent_id: cognitive.worker
+  - node_name: validate
+    agent_id: cognitive.reviewer
+  - node_name: commit
+    agent_id: cognitive.committer
+  - node_name: reflect
+    agent_id: cognitive.reflector
+edges:
+  - source: analyze
+    target: plan
+  - source: plan
+    target: execute
+  - source: execute
+    target: validate
+  - source: commit
+    target: reflect
+  - source: reflect
+    target: __end__
+conditional_edges:
+  - source: validate
+    condition: validation_router
+    routes:
+      commit: commit
+      plan: plan
+      reflect: reflect

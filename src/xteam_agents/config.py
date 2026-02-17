@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     log_level: LogLevel = Field(default=LogLevel.INFO)
     log_json: bool = Field(default=True)
 
+    # Platform Configuration
+    specs_dir: str | None = Field(
+        default=None,
+        description="Custom specs directory path (default: builtin specs)",
+    )
+
     # n8n Integration
     n8n_url: str | None = Field(default=None, description="n8n webhook URL")
     n8n_api_key: SecretStr | None = Field(default=None)

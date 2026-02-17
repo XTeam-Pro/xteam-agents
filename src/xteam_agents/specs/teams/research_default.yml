@@ -1,0 +1,21 @@
+id: team.research_default
+name: Default Research Team
+version: "1.0"
+description: Full research team with scientists, methodologists, and content experts
+pipeline: pipeline.research_team
+orchestrator: research.chief_scientist
+agents:
+  - research.chief_scientist
+  - research.data_scientist
+  - research.ml_researcher
+  - research.cognitive_scientist
+  - research.pedagogical_researcher
+  - research.curriculum_designer
+  - research.assessment_designer
+  - research.adaptive_learning
+  - research.content_architect
+  - research.subject_matter_expert
+  - research.dataset_engineer
+  - research.annotation_specialist
+max_iterations: 3
+approval_threshold: 7.0

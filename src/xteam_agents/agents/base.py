@@ -1,5 +1,7 @@
 """Base classes for Agent and Critic in adversarial system."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -14,6 +16,7 @@ from .adversarial_state import AdversarialAgentState, AgentOutput, CriticReview
 
 if TYPE_CHECKING:
     from ..memory.manager import MemoryManager
+    from ..platform.spec import AgentSpec
 
 logger = structlog.get_logger()
 
@@ -35,6 +38,27 @@ class BaseAgent(ABC):
 
         # Initialize LLM (use provided or create new)
         self.llm = llm if llm is not None else self._create_llm()
+
+    @classmethod
+    def from_spec(
+        cls,
+        spec: AgentSpec,
+        settings: Settings,
+        memory_manager: Optional["MemoryManager"] = None,
+    ) -> "BaseAgent":
+        """Create agent instance from declarative AgentSpec.
+
+        Converts an AgentSpec into an AgentConfig and instantiates the agent.
+        This bridges the new declarative platform with the existing class hierarchy.
+        """
+        config = AgentConfig(
+            role=AgentRole(spec.role) if spec.role in AgentRole.__members__.values() else AgentRole.TECH_LEAD,
+            model=spec.model,
+            temperature=spec.temperature,
+            max_tokens=spec.max_tokens,
+            persona=spec.persona,
+        )
+        return cls(config=config, settings=settings, memory_manager=memory_manager)
 
     def _create_llm(self):
         """Create LLM instance based on configuration."""
@@ -133,6 +157,30 @@ class BaseCritic(ABC):
 
         # Initialize LLM (use provided or create new)
         self.llm = llm if llm is not None else self._create_llm()
+
+    @classmethod
+    def from_spec(
+        cls,
+        spec: AgentSpec,
+        settings: Settings,
+        memory_manager: Optional["MemoryManager"] = None,
+    ) -> "BaseCritic":
+        """Create critic instance from declarative AgentSpec (using critic sub-spec).
+
+        Bridges the new declarative platform with the existing class hierarchy.
+        """
+        critic_spec = spec.get_critic_spec()
+        if critic_spec is None:
+            raise ValueError(f"AgentSpec {spec.id} does not have a critic defined")
+
+        config = AgentConfig(
+            role=AgentRole(critic_spec.role) if critic_spec.role in AgentRole.__members__.values() else AgentRole.TECH_LEAD,
+            model=critic_spec.model,
+            temperature=critic_spec.temperature,
+            max_tokens=critic_spec.max_tokens,
+            persona=critic_spec.persona,
+        )
+        return cls(config=config, settings=settings, memory_manager=memory_manager)
 
     def _create_llm(self):
         """Create LLM instance based on configuration."""

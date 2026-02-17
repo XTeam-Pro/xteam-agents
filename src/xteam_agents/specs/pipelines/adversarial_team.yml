@@ -1,0 +1,40 @@
+id: pipeline.adversarial_team
+name: Adversarial Team Pipeline
+version: "1.0"
+description: 21-agent adversarial team with orchestrator, agent-critic pairs, conflict resolution
+entry_point: orchestrator_classify
+state_schema: AdversarialAgentState
+resource_budget:
+  max_tokens: 200000
+  max_time_seconds: 600
+  max_depth: 2
+nodes:
+  - node_name: orchestrator_classify
+    agent_id: adversarial.orchestrator
+  - node_name: execute_pairs
+    agent_id: __system__.pair_executor
+  - node_name: resolve_conflicts
+    agent_id: adversarial.orchestrator
+  - node_name: orchestrator_finalize
+    agent_id: adversarial.orchestrator
+  - node_name: fail
+    agent_id: __system__.fail_handler
+edges:
+  - source: orchestrator_classify
+    target: execute_pairs
+  - source: orchestrator_finalize
+    target: __end__
+  - source: fail
+    target: __end__
+conditional_edges:
+  - source: execute_pairs
+    condition: route_after_pairs
+    routes:
+      conflicts: resolve_conflicts
+      finalize: orchestrator_finalize
+      fail: fail
+  - source: resolve_conflicts
+    condition: route_after_conflicts
+    routes:
+      retry_pairs: execute_pairs
+      finalize: orchestrator_finalize

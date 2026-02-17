@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -17,6 +18,8 @@ from xteam_agents.models.audit import AuditEntry, AuditEventType
 from xteam_agents.models.state import AgentState
 from xteam_agents.models.task import Priority, TaskInfo, TaskRequest, TaskResult, TaskStatus
 from xteam_agents.perception.engine import PerceptionEngine
+from xteam_agents.platform.loader import SpecLoader, get_default_specs_path
+from xteam_agents.platform.registry import AgentRegistry, PipelineRegistry, TeamRegistry
 
 import httpx
 
@@ -49,6 +52,11 @@ class TaskOrchestrator:
         self._graph = None
         self._magic_core = None  # MAGICCore instance (when MAGIC is enabled)
 
+        # Platform registries (populated during setup)
+        self.agent_registry = AgentRegistry()
+        self.pipeline_registry = PipelineRegistry()
+        self.team_registry = TeamRegistry()
+
     async def setup(self) -> None:
         """Initialize all components."""
         if self._initialized:
@@ -65,6 +73,25 @@ class TaskOrchestrator:
         self.action_executor = ActionExecutor(self.settings, self.capability_registry)
         self.perception_engine = PerceptionEngine(self.settings)
         await self.perception_engine.setup()
+
+        # Load platform specs
+        specs_path = (
+            Path(self.settings.specs_dir)
+            if self.settings.specs_dir
+            else get_default_specs_path()
+        )
+        spec_loader = SpecLoader(
+            self.agent_registry,
+            self.pipeline_registry,
+            self.team_registry,
+        )
+        counts = spec_loader.load_directory(specs_path)
+        logger.info(
+            "platform_specs_loaded",
+            agents=counts["agents"],
+            pipelines=counts["pipelines"],
+            teams=counts["teams"],
+        )
 
         # Initialize MAGIC if enabled
         if self.settings.magic_enabled:
